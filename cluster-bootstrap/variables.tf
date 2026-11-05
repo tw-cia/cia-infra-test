@@ -74,3 +74,27 @@ variable "argocd_admin_group_ids" {
   type        = list(string)
   default     = []
 }
+
+variable "argocd_repo_url" {
+  description = "URL of the Git repository Argo CD connects to via the GitHub App."
+  type        = string
+  default     = null
+}
+
+variable "argocd_github_app_id" {
+  description = "GitHub App ID used by Argo CD to authenticate to the repository."
+  type        = string
+  default     = null
+}
+
+variable "argocd_github_app_installation_id" {
+  description = "Installation ID of the GitHub App on the organization/repository."
+  type        = string
+  default     = null
+}
+
+variable "argocd_github_app_private_key_path" {
+  description = "PEM private key path of the GitHub App. Pass via TF_VAR_argocd_github_app_private_key, not a tfvars file."
+  type        = string
+  default     = null
+}
