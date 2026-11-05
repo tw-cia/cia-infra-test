@@ -37,6 +37,51 @@ resource "kubernetes_cluster_role_binding_v1" "argocd_read_all" {
   subject {
     api_group = "rbac.authorization.k8s.io"
     kind      = "Group"
-    name      = "eks-access-entry:${aws_iam_role.argocd_capability[0].arn}"
+    name      = "argocd-capability-role"
+  }
+}
+
+# AWS's AmazonEKSArgoCDPolicy (namespace-scoped to argocd) does not cover
+# patch/update on Argo's own CRs, so the controller can reconcile but can
+# never write status back onto Application/AppProject/ApplicationSet
+# objects in its own namespace. Confirmed via kube-apiserver audit logs:
+# "cannot patch resource \"applications\" in API group \"argoproj.io\" in
+# the namespace \"argocd\"".
+
+resource "kubernetes_role_v1" "argocd_self_write" {
+  count = var.enable_argocd ? 1 : 0
+
+  metadata {
+    name      = "argocd-self-write"
+    namespace = var.argocd_namespace
+  }
+
+  rule {
+    api_groups = ["argoproj.io"]
+    resources  = ["applications", "applicationsets", "appprojects"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+  }
+
+  depends_on = [aws_eks_capability.argocd]
+}
+
+resource "kubernetes_role_binding_v1" "argocd_self_write" {
+  count = var.enable_argocd ? 1 : 0
+
+  metadata {
+    name      = "argocd-self-write"
+    namespace = var.argocd_namespace
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = kubernetes_role_v1.argocd_self_write[0].metadata[0].name
+  }
+
+  subject {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Group"
+    name      = "argocd-capability-role"
   }
 }
