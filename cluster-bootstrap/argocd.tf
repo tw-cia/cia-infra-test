@@ -85,6 +85,11 @@ resource "kubernetes_config_map_v1" "argocd_cm" {
         - "*"
         kinds:
         - ProviderConfigUsage
+      - apiGroups:
+        - admissionregistration.k8s.io
+        kinds:
+        - MutatingAdmissionPolicy
+        - MutatingAdmissionPolicyBinding
     EOT
 
     "resource.customizations" = <<-EOT
