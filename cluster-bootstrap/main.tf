@@ -57,7 +57,10 @@ module "eks" {
     coredns                = {}
     eks-pod-identity-agent = {}
     kube-proxy             = {}
-    vpc-cni                = {}
+    vpc-cni = {
+      # Install before the node group so nodes come up with networking ready
+      before_compute = true
+    }
   }
 
   eks_managed_node_groups = {
