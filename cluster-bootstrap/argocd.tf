@@ -94,6 +94,11 @@ resource "kubernetes_config_map_v1" "argocd_cm" {
         - resource.k8s.io
         kinds:
         - "*"
+      - apiGroups:
+        - networking.k8s.io
+        kinds:
+        - IPAddress
+        - ServiceCIDR
     EOT
 
     "resource.customizations" = <<-EOT
