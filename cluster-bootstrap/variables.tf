@@ -44,3 +44,33 @@ variable "node_max_size" {
   type        = number
   default     = 4
 }
+
+variable "enable_argocd" {
+  description = "Enable the managed Argo CD EKS capability."
+  type        = bool
+  default     = true
+}
+
+variable "argocd_namespace" {
+  description = "Kubernetes namespace for the Argo CD capability."
+  type        = string
+  default     = "argocd"
+}
+
+variable "argocd_idc_instance_arn" {
+  description = "ARN of the IAM Identity Center instance used to sign in to Argo CD (required when enable_argocd = true)."
+  type        = string
+  default     = null
+}
+
+variable "argocd_idc_region" {
+  description = "Region of the IAM Identity Center instance."
+  type        = string
+  default     = "eu-central-1"
+}
+
+variable "argocd_admin_group_ids" {
+  description = "IAM Identity Center group IDs granted the Argo CD ADMIN role."
+  type        = list(string)
+  default     = []
+}

@@ -31,3 +31,8 @@ output "configure_kubectl" {
   description = "Command to configure kubectl for this cluster."
   value       = "aws eks update-kubeconfig --region ${var.region} --name ${module.eks.cluster_name}"
 }
+
+output "argocd_server_url" {
+  description = "URL of the managed Argo CD server."
+  value       = one(aws_eks_capability.argocd[*].configuration[0].argo_cd[0].server_url)
+}
