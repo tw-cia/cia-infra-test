@@ -33,15 +33,6 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.region
                 toFieldPath: spec.forProvider.region
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: spec.bucketName
-                    - fromFieldPath: spec.region
-                  strategy: string
-                  string:
-                    fmt: "%s.s3-website-%s.amazonaws.com"
-                toFieldPath: status.bucketWebsiteEndpoint
 
           - name: bucket-public-access-block
             base:
