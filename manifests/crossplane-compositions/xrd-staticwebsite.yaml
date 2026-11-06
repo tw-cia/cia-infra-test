@@ -29,6 +29,19 @@ spec:
                   type: string
                   description: Index document served at the site root.
                   default: index.html
+                domainName:
+                  type: string
+                  description: >-
+                    Optional custom domain (e.g. site.example.com) to serve the
+                    site on instead of the default CloudFront domain. Requires
+                    hostedZoneId. Provisions an ACM certificate (DNS-validated)
+                    and a Route53 alias record automatically.
+                hostedZoneId:
+                  type: string
+                  description: >-
+                    Route53 hosted zone ID to create the validation and alias
+                    records in. Required if domainName is set; the zone itself
+                    is not managed by this composition.
               required:
                 - bucketName
                 - region
@@ -38,3 +51,12 @@ spec:
                 cloudfrontDomainName:
                   type: string
                   description: Public CloudFront domain name to actually visit the site on.
+                certificateArn:
+                  type: string
+                  description: ARN of the ACM certificate for domainName, once requested.
+                certValidationRecordName:
+                  type: string
+                  description: DNS name of the ACM DNS-validation record.
+                certValidationRecordValue:
+                  type: string
+                  description: DNS value of the ACM DNS-validation record.

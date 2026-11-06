@@ -105,6 +105,87 @@ spec:
                       type: Format
                       fmt: '{"Version":"2012-10-17","Statement":[{"Sid":"PublicReadForWebsite","Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::%[1]s/*"}]}'
 
+          # The following three resources only come into being when
+          # spec.domainName is set, via Required-policy patches: when the
+          # source field is missing, the function skips rendering that
+          # resource entirely rather than erroring.
+          - name: certificate
+            base:
+              apiVersion: acm.aws.m.upbound.io/v1beta1
+              kind: Certificate
+              spec:
+                forProvider:
+                  region: us-east-1
+                  validationMethod: DNS
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.domainName
+                toFieldPath: spec.forProvider.domainName
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.certificateArn
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.domainValidationOptions[0].resourceRecordName
+                toFieldPath: status.certValidationRecordName
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.domainValidationOptions[0].resourceRecordValue
+                toFieldPath: status.certValidationRecordValue
+
+          - name: cert-validation-record
+            base:
+              apiVersion: route53.aws.m.upbound.io/v1beta1
+              kind: Record
+              spec:
+                forProvider:
+                  type: CNAME
+                  ttl: 300
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.certValidationRecordName
+                toFieldPath: spec.forProvider.name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.certValidationRecordValue
+                toFieldPath: spec.forProvider.records[0]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.hostedZoneId
+                toFieldPath: spec.forProvider.zoneId
+                policy:
+                  fromFieldPath: Required
+
+          - name: certificate-validation
+            base:
+              apiVersion: acm.aws.m.upbound.io/v1beta1
+              kind: CertificateValidation
+              spec:
+                forProvider:
+                  region: us-east-1
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.certificateArn
+                toFieldPath: spec.forProvider.certificateArn
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.certValidationRecordName
+                toFieldPath: spec.forProvider.validationRecordFqdns[0]
+                policy:
+                  fromFieldPath: Required
+
           - name: distribution
             base:
               apiVersion: cloudfront.aws.m.upbound.io/v1beta1
@@ -117,8 +198,6 @@ spec:
                   restrictions:
                     geoRestriction:
                       restrictionType: none
-                  viewerCertificate:
-                    cloudfrontDefaultCertificate: true
                   origin:
                     - originId: s3-website-origin
                       customOriginConfig:
@@ -151,6 +230,34 @@ spec:
                   string:
                     fmt: "%s.s3-website-%s.amazonaws.com"
                 toFieldPath: spec.forProvider.origin[0].domainName
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.domainName
+                toFieldPath: spec.forProvider.aliases[0]
+              # Whole-object swap: CloudFront requires exactly one of
+              # cloudfrontDefaultCertificate / acmCertificateArn, so this
+              # can't be done as independent field patches. No domainName
+              # -> default cert (fallback); domainName set -> acm shape
+              # (acmCertificateArn filled in by the next patch, once known).
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.domainName
+                toFieldPath: spec.forProvider.viewerCertificate
+                transforms:
+                  - type: match
+                    match:
+                      patterns:
+                        - type: regexp
+                          regexp: ".+"
+                          result:
+                            sslSupportMethod: sni-only
+                            minimumProtocolVersion: TLSv1.2_2021
+                      fallbackTo: Value
+                      fallbackValue:
+                        cloudfrontDefaultCertificate: true
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.certificateArn
+                toFieldPath: spec.forProvider.viewerCertificate.acmCertificateArn
+                policy:
+                  fromFieldPath: Required
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.domainName
                 toFieldPath: status.cloudfrontDomainName
