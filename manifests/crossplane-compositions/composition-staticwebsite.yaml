@@ -1,0 +1,154 @@
+# Classic "S3 website hosting behind a CloudFront custom origin" pattern:
+# simple (no OriginAccessControl/circular distribution-ARN bucket policy
+# needed), at the cost of the bucket's website endpoint being directly,
+# publicly readable as well as via CloudFront. Good enough for a demo site;
+# switch to CloudFront + OAC + a private bucket for anything real.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: staticwebsite-s3-cloudfront
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: StaticWebsite
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: bucket
+            base:
+              apiVersion: s3.aws.m.upbound.io/v1beta1
+              kind: Bucket
+              spec:
+                forProvider: {}
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.bucketName
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.bucketName
+                    - fromFieldPath: spec.region
+                  strategy: string
+                  string:
+                    fmt: "%s.s3-website-%s.amazonaws.com"
+                toFieldPath: status.bucketWebsiteEndpoint
+                policy:
+                  toFieldPath: Required
+
+          - name: bucket-public-access-block
+            base:
+              apiVersion: s3.aws.m.upbound.io/v1beta1
+              kind: BucketPublicAccessBlock
+              spec:
+                forProvider:
+                  blockPublicAcls: false
+                  blockPublicPolicy: false
+                  ignorePublicAcls: false
+                  restrictPublicBuckets: false
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.bucketName
+                toFieldPath: spec.forProvider.bucket
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+
+          - name: bucket-website-configuration
+            base:
+              apiVersion: s3.aws.m.upbound.io/v1beta1
+              kind: BucketWebsiteConfiguration
+              spec:
+                forProvider:
+                  indexDocument:
+                    suffix: index.html
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.bucketName
+                toFieldPath: spec.forProvider.bucket
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.indexDocument
+                toFieldPath: spec.forProvider.indexDocument.suffix
+
+          - name: bucket-policy
+            base:
+              apiVersion: s3.aws.m.upbound.io/v1beta1
+              kind: BucketPolicy
+              spec:
+                forProvider: {}
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.bucketName
+                toFieldPath: spec.forProvider.bucket
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.bucketName
+                toFieldPath: spec.forProvider.policy
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '{"Version":"2012-10-17","Statement":[{"Sid":"PublicReadForWebsite","Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::%[1]s/*"}]}'
+
+          - name: distribution
+            base:
+              apiVersion: cloudfront.aws.m.upbound.io/v1beta1
+              kind: Distribution
+              spec:
+                forProvider:
+                  enabled: true
+                  isIpv6Enabled: true
+                  priceClass: PriceClass_100
+                  restrictions:
+                    geoRestriction:
+                      restrictionType: none
+                  viewerCertificate:
+                    cloudfrontDefaultCertificate: true
+                  origin:
+                    - originId: s3-website-origin
+                      customOriginConfig:
+                        httpPort: 80
+                        httpsPort: 443
+                        originProtocolPolicy: http-only
+                        originSslProtocols:
+                          - TLSv1.2
+                  defaultCacheBehavior:
+                    targetOriginId: s3-website-origin
+                    viewerProtocolPolicy: redirect-to-https
+                    allowedMethods: [GET, HEAD]
+                    cachedMethods: [GET, HEAD]
+                    # AWS managed "CachingOptimized" policy -- a fixed, global ID
+                    # documented by AWS, not account-specific.
+                    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.indexDocument
+                toFieldPath: spec.forProvider.defaultRootObject
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.bucketName
+                    - fromFieldPath: spec.region
+                  strategy: string
+                  string:
+                    fmt: "%s.s3-website-%s.amazonaws.com"
+                toFieldPath: spec.forProvider.origin[0].domainName
+                policy:
+                  toFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.domainName
+                toFieldPath: status.cloudfrontDomainName

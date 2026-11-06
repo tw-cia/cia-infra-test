@@ -1,0 +1,43 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: staticwebsites.platform.cia-infra-test.io
+spec:
+  group: platform.cia-infra-test.io
+  names:
+    kind: StaticWebsite
+    plural: staticwebsites
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                bucketName:
+                  type: string
+                  description: Globally-unique S3 bucket name to create and serve the site from.
+                region:
+                  type: string
+                  description: AWS region for the bucket and the CloudFront origin.
+                indexDocument:
+                  type: string
+                  description: Index document served at the site root.
+                  default: index.html
+              required:
+                - bucketName
+                - region
+            status:
+              type: object
+              properties:
+                bucketWebsiteEndpoint:
+                  type: string
+                  description: The S3 static website endpoint (origin behind CloudFront).
+                cloudfrontDomainName:
+                  type: string
+                  description: Public CloudFront domain name to actually visit the site on.
