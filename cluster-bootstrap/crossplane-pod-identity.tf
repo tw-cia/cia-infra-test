@@ -34,6 +34,7 @@ locals {
     "provider-aws-s3",
     "provider-aws-iam",
     "provider-aws-lambda",
+    "provider-aws-cloudfront",
   ]
 }
 
