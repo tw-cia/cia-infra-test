@@ -21,6 +21,26 @@ resource "aws_iam_role" "argocd_capability" {
   assume_role_policy = data.aws_iam_policy_document.argocd_assume[0].json
 }
 
+resource "aws_eks_access_entry" "argocd_capability_eks_access" {
+  count = var.enable_argocd ? 1 : 0
+
+  cluster_name = module.eks.cluster_name
+  principal_arn = aws_iam_role.argocd_capability[0].arn
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "argocd_capability_admin_access_policy" {
+  count = var.enable_argocd ? 1 : 0
+
+  cluster_name  = module.eks.cluster_name
+  principal_arn = aws_eks_access_entry.argocd_capability_eks_access[0].principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+}
+
 resource "aws_eks_capability" "argocd" {
   count = var.enable_argocd ? 1 : 0
 
