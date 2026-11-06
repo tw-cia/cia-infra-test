@@ -198,6 +198,8 @@ spec:
                   restrictions:
                     geoRestriction:
                       restrictionType: none
+                  viewerCertificate:
+                    cloudfrontDefaultCertificate: true
                   origin:
                     - originId: s3-website-origin
                       customOriginConfig:
