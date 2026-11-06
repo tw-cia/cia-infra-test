@@ -1,0 +1,10 @@
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: StaticWebsite
+metadata:
+  name: laz-static-website-customdomain-example
+  namespace: laz-testing-crossplane
+spec:
+  bucketName: laz-static-website-customdomain-demo
+  region: ap-southeast-1
+  domainName: static.trololo.demotw.com
+  hostedZoneId: Z05411841WZ6WIYFCDW2E
