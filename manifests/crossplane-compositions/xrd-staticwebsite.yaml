@@ -19,32 +19,42 @@ spec:
             spec:
               type: object
               properties:
-                bucketName:
-                  type: string
-                  description: Globally-unique S3 bucket name to create and serve the site from.
-                region:
-                  type: string
-                  description: AWS region for the bucket and the CloudFront origin.
+                bucket:
+                  type: object
+                  description: The S3 bucket to create and serve the site from.
+                  properties:
+                    name:
+                      type: string
+                      description: Globally-unique S3 bucket name.
+                    region:
+                      type: string
+                      description: AWS region for the bucket and the CloudFront origin.
+                  required:
+                    - name
+                    - region
                 indexDocument:
                   type: string
                   description: Index document served at the site root.
                   default: index.html
-                domainName:
-                  type: string
+                zone:
+                  type: object
                   description: >-
-                    Optional custom domain (e.g. site.example.com) to serve the
-                    site on instead of the default CloudFront domain. Requires
-                    hostedZoneId. Provisions an ACM certificate (DNS-validated)
-                    and a Route53 alias record automatically.
-                hostedZoneId:
-                  type: string
-                  description: >-
-                    Route53 hosted zone ID to create the validation and alias
-                    records in. Required if domainName is set; the zone itself
-                    is not managed by this composition.
+                    Optional custom domain, served instead of the default
+                    CloudFront domain. Provisions an ACM certificate
+                    (DNS-validated) and a Route53 alias record automatically.
+                    The hosted zone itself is not managed by this composition.
+                  properties:
+                    name:
+                      type: string
+                      description: Custom domain name, e.g. site.example.com.
+                    id:
+                      type: string
+                      description: Route53 hosted zone ID to create records in.
+                  required:
+                    - name
+                    - id
               required:
-                - bucketName
-                - region
+                - bucket
             status:
               type: object
               properties:

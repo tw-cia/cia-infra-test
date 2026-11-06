@@ -31,10 +31,10 @@ spec:
                   name: pod-identity
             patches:
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.bucketName
+                fromFieldPath: spec.bucket.name
                 toFieldPath: metadata.annotations[crossplane.io/external-name]
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.region
+                fromFieldPath: spec.bucket.region
                 toFieldPath: spec.forProvider.region
 
           - name: bucket-public-access-block
@@ -52,10 +52,10 @@ spec:
                   name: pod-identity
             patches:
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.bucketName
+                fromFieldPath: spec.bucket.name
                 toFieldPath: spec.forProvider.bucket
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.region
+                fromFieldPath: spec.bucket.region
                 toFieldPath: spec.forProvider.region
 
           - name: bucket-website-configuration
@@ -71,10 +71,10 @@ spec:
                   name: pod-identity
             patches:
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.bucketName
+                fromFieldPath: spec.bucket.name
                 toFieldPath: spec.forProvider.bucket
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.region
+                fromFieldPath: spec.bucket.region
                 toFieldPath: spec.forProvider.region
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.indexDocument
@@ -91,13 +91,13 @@ spec:
                   name: pod-identity
             patches:
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.bucketName
+                fromFieldPath: spec.bucket.name
                 toFieldPath: spec.forProvider.bucket
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.region
+                fromFieldPath: spec.bucket.region
                 toFieldPath: spec.forProvider.region
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.bucketName
+                fromFieldPath: spec.bucket.name
                 toFieldPath: spec.forProvider.policy
                 transforms:
                   - type: string
@@ -106,7 +106,7 @@ spec:
                       fmt: '{"Version":"2012-10-17","Statement":[{"Sid":"PublicReadForWebsite","Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::%[1]s/*"}]}'
 
           # The following three resources only come into being when
-          # spec.domainName is set, via Required-policy patches: when the
+          # spec.zone.name is set, via Required-policy patches: when the
           # source field is missing, the function skips rendering that
           # resource entirely rather than erroring.
           - name: certificate
@@ -122,7 +122,7 @@ spec:
                   name: pod-identity
             patches:
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.domainName
+                fromFieldPath: spec.zone.name
                 toFieldPath: spec.forProvider.domainName
                 policy:
                   fromFieldPath: Required
@@ -159,7 +159,7 @@ spec:
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.hostedZoneId
+                fromFieldPath: spec.zone.id
                 toFieldPath: spec.forProvider.zoneId
                 policy:
                   fromFieldPath: Required
@@ -226,14 +226,14 @@ spec:
               - type: CombineFromComposite
                 combine:
                   variables:
-                    - fromFieldPath: spec.bucketName
-                    - fromFieldPath: spec.region
+                    - fromFieldPath: spec.bucket.name
+                    - fromFieldPath: spec.bucket.region
                   strategy: string
                   string:
                     fmt: "%s.s3-website-%s.amazonaws.com"
                 toFieldPath: spec.forProvider.origin[0].domainName
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.domainName
+                fromFieldPath: spec.zone.name
                 toFieldPath: spec.forProvider.aliases[0]
               # Whole-object swap: CloudFront requires exactly one of
               # cloudfrontDefaultCertificate / acmCertificateArn, so this
@@ -241,7 +241,7 @@ spec:
               # -> default cert (fallback); domainName set -> acm shape
               # (acmCertificateArn filled in by the next patch, once known).
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.domainName
+                fromFieldPath: spec.zone.name
                 toFieldPath: spec.forProvider.viewerCertificate
                 transforms:
                   - type: match
@@ -284,12 +284,12 @@ spec:
                   name: pod-identity
             patches:
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.domainName
+                fromFieldPath: spec.zone.name
                 toFieldPath: spec.forProvider.name
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.hostedZoneId
+                fromFieldPath: spec.zone.id
                 toFieldPath: spec.forProvider.zoneId
                 policy:
                   fromFieldPath: Required

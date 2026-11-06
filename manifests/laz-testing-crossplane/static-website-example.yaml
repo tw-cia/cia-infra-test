@@ -4,5 +4,6 @@ metadata:
   name: laz-static-website-example
   namespace: laz-testing-crossplane
 spec:
-  bucketName: laz-static-website-crossplane-demo
-  region: ap-southeast-1
+  bucket:
+    name: laz-static-website-crossplane-demo
+    region: ap-southeast-1
