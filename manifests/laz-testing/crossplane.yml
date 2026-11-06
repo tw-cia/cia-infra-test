@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane
+  namespace: crossplane
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/chooowai-tw/cia-infra-test
+    targetRevision: main
+    path: manifests/crossplane
+  destination:
+    name: in-cluster
+    namespace: crossplane
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
