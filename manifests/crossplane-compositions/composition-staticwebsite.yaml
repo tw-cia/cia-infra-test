@@ -26,6 +26,9 @@ spec:
               kind: Bucket
               spec:
                 forProvider: {}
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.bucketName
@@ -44,6 +47,9 @@ spec:
                   blockPublicPolicy: false
                   ignorePublicAcls: false
                   restrictPublicBuckets: false
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.bucketName
@@ -60,6 +66,9 @@ spec:
                 forProvider:
                   indexDocument:
                     suffix: index.html
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.bucketName
@@ -77,6 +86,9 @@ spec:
               kind: BucketPolicy
               spec:
                 forProvider: {}
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.bucketName
@@ -123,6 +135,9 @@ spec:
                     # AWS managed "CachingOptimized" policy -- a fixed, global ID
                     # documented by AWS, not account-specific.
                     cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.indexDocument
