@@ -263,3 +263,38 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.domainName
                 toFieldPath: status.cloudfrontDomainName
+
+          # Points domainName at the distribution. Gated on
+          # status.cloudfrontDomainName, which only exists once the
+          # Distribution itself has been created.
+          - name: domain-alias-record
+            base:
+              apiVersion: route53.aws.m.upbound.io/v1beta1
+              kind: Record
+              spec:
+                forProvider:
+                  type: A
+                  alias:
+                    # Fixed, universal CloudFront alias-target hosted zone ID
+                    # -- not account- or distribution-specific.
+                    zoneId: Z2FDTNDATAQYW2
+                    evaluateTargetHealth: false
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.domainName
+                toFieldPath: spec.forProvider.name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.hostedZoneId
+                toFieldPath: spec.forProvider.zoneId
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.cloudfrontDomainName
+                toFieldPath: spec.forProvider.alias.name
+                policy:
+                  fromFieldPath: Required
