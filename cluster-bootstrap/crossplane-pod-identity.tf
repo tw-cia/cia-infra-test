@@ -25,17 +25,15 @@ resource "aws_iam_role_policy_attachment" "crossplane_providers_admin" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-# Each Crossplane provider gets its own ServiceAccount, named after its
-# ProviderRevision (e.g. "provider-aws-s3-<hash>"). That hash is derived
-# from the package digest, so it's stable as long as the pinned version in
-# manifests/crossplane-providers doesn't change, but it WILL change on the
-# next version bump -- check `kubectl get sa -n crossplane-system` and
-# update these names when upgrading a provider.
+# Each provider's ServiceAccount name is pinned via a DeploymentRuntimeConfig
+# (serviceAccountTemplate.metadata.name in manifests/crossplane-providers),
+# so these names are stable across provider version bumps -- no more
+# ProviderRevision hash to track.
 locals {
   crossplane_provider_service_accounts = [
-    "provider-aws-s3-63d4b64062f4",
-    "provider-aws-iam-d17ce2593cf0",
-    "provider-aws-lambda-b7fd61963371",
+    "provider-aws-s3",
+    "provider-aws-iam",
+    "provider-aws-lambda",
   ]
 }
 

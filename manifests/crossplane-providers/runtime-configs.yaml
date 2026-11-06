@@ -1,0 +1,26 @@
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-aws-s3
+spec:
+  serviceAccountTemplate:
+    metadata:
+      name: provider-aws-s3
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-aws-iam
+spec:
+  serviceAccountTemplate:
+    metadata:
+      name: provider-aws-iam
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-aws-lambda
+spec:
+  serviceAccountTemplate:
+    metadata:
+      name: provider-aws-lambda
