@@ -36,6 +36,7 @@ locals {
     "provider-aws-lambda",
     "provider-aws-cloudfront",
     "provider-aws-route53",
+    "provider-aws-acm",
   ]
 }
 
