@@ -1,0 +1,7 @@
+apiVersion: aws.m.upbound.io/v1beta1
+kind: ClusterProviderConfig
+metadata:
+  name: pod-identity
+spec:
+  credentials:
+    source: PodIdentity

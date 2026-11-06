@@ -1,0 +1,13 @@
+apiVersion: s3.aws.m.upbound.io/v1beta1
+kind: Bucket
+metadata:
+  name: laz-s3-bucket-from-crossplane
+  namespace: laz-testing-crossplane
+  annotations:
+    crossplane.io/external-name: laz-s3-bucket-from-crossplane
+spec:
+  forProvider:
+    region: ap-southeast-1
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: pod-identity
