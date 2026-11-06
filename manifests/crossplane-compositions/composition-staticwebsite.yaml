@@ -42,8 +42,6 @@ spec:
                   string:
                     fmt: "%s.s3-website-%s.amazonaws.com"
                 toFieldPath: status.bucketWebsiteEndpoint
-                policy:
-                  toFieldPath: Required
 
           - name: bucket-public-access-block
             base:
@@ -147,8 +145,6 @@ spec:
                   string:
                     fmt: "%s.s3-website-%s.amazonaws.com"
                 toFieldPath: spec.forProvider.origin[0].domainName
-                policy:
-                  toFieldPath: Required
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.domainName
                 toFieldPath: status.cloudfrontDomainName
