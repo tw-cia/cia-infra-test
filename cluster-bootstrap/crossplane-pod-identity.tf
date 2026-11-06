@@ -35,6 +35,7 @@ locals {
     "provider-aws-iam",
     "provider-aws-lambda",
     "provider-aws-cloudfront",
+    "provider-aws-route53",
   ]
 }
 

@@ -33,3 +33,12 @@ spec:
   serviceAccountTemplate:
     metadata:
       name: provider-aws-cloudfront
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-aws-route53
+spec:
+  serviceAccountTemplate:
+    metadata:
+      name: provider-aws-route53
