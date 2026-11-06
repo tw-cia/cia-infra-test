@@ -1,0 +1,12 @@
+apiVersion: route53.aws.m.upbound.io/v1beta1
+kind: Zone
+metadata:
+  name: trololo-demotw-com
+  namespace: laz-testing-crossplane
+spec:
+  forProvider:
+    name: trololo.demotw.com
+    comment: Managed by Crossplane
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: pod-identity
