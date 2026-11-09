@@ -1,0 +1,11 @@
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: IAMRole
+metadata:
+  name: laz-iam-role-example
+  namespace: laz-testing-crossplane
+spec:
+  roleName: laz-lambda-example-role
+  description: Example Lambda execution role created via Crossplane
+  trustedService: lambda.amazonaws.com
+  managedPolicyArns:
+    - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
