@@ -18,5 +18,5 @@ argocd_idc_region      = "eu-central-1"
 argocd_admin_group_ids = ["e3944862-6071-705c-e5ac-0ca278d57524"]
 argocd_repo_url = "https://github.com/chooowai-tw/cia-infra-test"
 argocd_github_app_id = "5625212"
-argocd_github_app_installation_id = "178866829"
+argocd_github_app_installation_id = "180077008"
 argocd_github_app_private_key_path = "./cia-test-argocd.2026-11-05.private-key.pem"

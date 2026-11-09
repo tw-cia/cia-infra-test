@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/chooowai-tw/cia-infra-test
+    repoURL: https://github.com/tw-cia/cia-infra-test
     targetRevision: main
     path: manifests/laz-testing-crossplane
   destination:
