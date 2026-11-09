@@ -20,11 +20,12 @@ spec:
           import json
 
           from crossplane.function import resource
+          from google.protobuf.json_format import MessageToDict
 
           PROVIDER_CONFIG = {"kind": "ClusterProviderConfig", "name": "pod-identity"}
 
           def compose(req, rsp):
-              xr = req.observed.composite.resource
+              xr = MessageToDict(req.observed.composite.resource)
               spec = xr["spec"]
               role_name = spec["roleName"]
 
@@ -75,10 +76,9 @@ spec:
                   )
 
               # Surface the role ARN on the XR once AWS has created it.
-              observed_role = req.observed.resources.get("role")
-              if observed_role is not None:
+              if "role" in req.observed.resources:
                   arn = (
-                      resource.struct_to_dict(observed_role.resource)
+                      MessageToDict(req.observed.resources["role"].resource)
                       .get("status", {})
                       .get("atProvider", {})
                       .get("arn")
