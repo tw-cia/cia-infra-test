@@ -106,6 +106,59 @@ class TestFunctionRunner(unittest.IsolatedAsyncioTestCase):
             "-want, +got",
         )
 
+    async def test_role_name_matches_spec(self) -> None:
+        req = fnv1.RunFunctionRequest(
+            observed=fnv1.State(
+                composite=fnv1.Resource(
+                    resource=resource.dict_to_struct(
+                        {
+                            "apiVersion": "platform.cia-infra-test.io/v1alpha1",
+                            "kind": "IAMRole",
+                            "spec": {
+                                "roleName": "totally-different-role-name",
+                                "trustedService": "lambda.amazonaws.com",
+                            },
+                        }
+                    ),
+                ),
+            ),
+        )
+
+        got = json_format.MessageToDict(await fn.FunctionRunner().RunFunction(req, None))
+
+        role = got["desired"]["resources"]["role"]["resource"]
+        self.assertEqual(
+            role["metadata"]["annotations"]["crossplane.io/external-name"],
+            "totally-different-role-name",
+        )
+
+    async def test_does_not_patch_status_when_role_not_yet_observed(self) -> None:
+        req = fnv1.RunFunctionRequest(
+            observed=fnv1.State(
+                composite=fnv1.Resource(
+                    resource=resource.dict_to_struct(
+                        {
+                            "apiVersion": "platform.cia-infra-test.io/v1alpha1",
+                            "kind": "IAMRole",
+                            "spec": {
+                                "roleName": "laz-lambda-example-role",
+                                "trustedService": "lambda.amazonaws.com",
+                            },
+                        }
+                    ),
+                ),
+                # No "resources" set: nothing has been observed yet, so there's
+                # no role ARN to surface -- this is the first reconcile.
+            ),
+        )
+
+        got = await fn.FunctionRunner().RunFunction(req, None)
+
+        # Only check the one property this test cares about: the function
+        # shouldn't try to patch the composite's status at all when it has
+        # nothing to surface, rather than diffing the whole response.
+        self.assertNotIn("composite", json_format.MessageToDict(got).get("desired", {}))
+
     async def test_surfaces_role_arn_once_known(self) -> None:
         req = fnv1.RunFunctionRequest(
             observed=fnv1.State(
