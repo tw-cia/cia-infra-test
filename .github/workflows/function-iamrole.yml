@@ -84,6 +84,12 @@ jobs:
           curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
           sudo mv crossplane /usr/local/bin/crossplane
 
+      - name: Setup the Jsonnet CLI
+        run: |
+          curl -sL https://github.com/google/go-jsonnet/releases/download/v0.22.0/go-jsonnet_0.22.0_linux_amd64.tar.gz \
+            | tar -xz jsonnet
+          sudo mv jsonnet /usr/local/bin/jsonnet
+
       - name: Build dev images for the custom-packaged Python functions
         run: |
           docker build functions/iamrole --tag function-iamrole:dev

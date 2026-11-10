@@ -1,24 +1,27 @@
-"""Proves that each of the three implementations we have per composite kind
-(Patch-and-Transform, a custom-packaged Python function, and an inline
-function-python script) produce equivalent output, across the reconcile-pass
-scenarios that actually differ (cold start, partially observed, fully
-observed, and -- for StaticWebsite -- the no-custom-domain case that
-currently triggers a known bug all three implementations faithfully
+"""Proves that each of the four implementations we have per composite kind
+(Patch-and-Transform, a custom-packaged Python function, an inline
+function-python script authored as plain YAML, and the same inline script
+authored as Jsonnet with importstr) produce equivalent output, across the
+reconcile-pass scenarios that actually differ (cold start, partially
+observed, fully observed, and -- for StaticWebsite -- the no-custom-domain
+case that currently triggers a known bug all implementations faithfully
 reproduce).
 
 Requires function-iamrole:dev, function-dnsvalidatedcertificate:dev, and
 function-staticwebsite:dev to already be built locally and loaded into the
-Docker daemon `crossplane composition render` talks to -- see
-.github/workflows/function-iamrole.yml's equivalence-test job, or build them
-yourself:
+Docker daemon `crossplane composition render` talks to, and the `jsonnet`
+CLI to be on PATH -- see .github/workflows/function-iamrole.yml's
+equivalence-test job, or set this up yourself:
 
     docker build functions/iamrole --tag function-iamrole:dev
     docker build functions/dnsvalidatedcertificate --tag function-dnsvalidatedcertificate:dev
     docker build functions/staticwebsite --tag function-staticwebsite:dev
+    brew install jsonnet  # or your platform's equivalent
 """
 
 import json
 import subprocess
+import tempfile
 
 import pytest
 import yaml
@@ -74,6 +77,18 @@ def render(xr_path, composition_path, function_path, observed_resources=None):
     return docs
 
 
+def evaluate_jsonnet(jsonnet_path: str) -> str:
+    """Evaluates a .jsonnet Composition the same way Argo CD's repo-server
+    would, and writes the resulting JSON manifest to a temp file -- `render`
+    needs an actual file path, not evaluated content in memory."""
+    result = subprocess.run(["jsonnet", jsonnet_path], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        f.write(result.stdout)
+        return f.name
+
+
 def assert_all_equivalent(renders: dict):
     """renders maps a label (e.g. "patch-and-transform") to that
     implementation's rendered docs. Asserts they're all equal, and reports
@@ -123,6 +138,12 @@ def test_iamrole_equivalence(xr, observed_resources):
                 FUNCTION_PYTHON,
                 observed_resources,
             ),
+            "jsonnet": render(
+                xr,
+                evaluate_jsonnet("./manifests/crossplane-compositions/composition-iamrole-jsonnet.jsonnet"),
+                FUNCTION_PYTHON,
+                observed_resources,
+            ),
         }
     )
 
@@ -160,6 +181,14 @@ def test_dns_validated_certificate_equivalence(xr, observed_resources):
                 FUNCTION_PYTHON,
                 observed_resources,
             ),
+            "jsonnet": render(
+                xr,
+                evaluate_jsonnet(
+                    "./manifests/crossplane-compositions/composition-dnsvalidatedcertificate-jsonnet.jsonnet"
+                ),
+                FUNCTION_PYTHON,
+                observed_resources,
+            ),
         }
     )
 
@@ -190,6 +219,11 @@ def test_staticwebsite_equivalence(xr):
             "inline-python": render(
                 xr,
                 "./manifests/crossplane-compositions/composition-staticwebsite-inline-python.yaml",
+                FUNCTION_PYTHON,
+            ),
+            "jsonnet": render(
+                xr,
+                evaluate_jsonnet("./manifests/crossplane-compositions/composition-staticwebsite-jsonnet.jsonnet"),
                 FUNCTION_PYTHON,
             ),
         }
