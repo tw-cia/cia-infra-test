@@ -1,0 +1,20 @@
+# Same XR as dns-validated-certificate-example.yaml, but with status
+# pre-populated as if a prior reconcile already ran. Patch-and-transform's
+# FromCompositeFieldPath patches read the *observed* composite's status, not
+# anything computed earlier in the same render -- so to unlock
+# cert-validation-record and certificate-validation (both gated on this
+# status) in a single render call, the input XR itself needs to already
+# carry it, same as a real second-or-later reconcile would.
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: DnsValidatedCertificate
+metadata:
+  name: laz-dns-validated-certificate-example-two
+  namespace: laz-testing-crossplane
+spec:
+  domainName: static-two.trololo.demotw.com
+  zone:
+    id: Z00921083AT1Z6WZY8LYW
+status:
+  certificateArn: arn:aws:acm:us-east-1:123456789012:certificate/mock-certificate-id
+  certValidationRecordName: _acmvalidation.static-two.trololo.demotw.com.
+  certValidationRecordValue: validate.acm-validations.aws.

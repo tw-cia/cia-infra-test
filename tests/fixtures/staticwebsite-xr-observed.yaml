@@ -1,0 +1,22 @@
+# Same XR as static-website-customdomain-example.yaml, but with status
+# pre-populated as if a prior reconcile already ran -- same reasoning as
+# dns-validated-certificate-xr-observed.yaml. BucketPolicy's policy field is
+# gated on status.distributionArn, which only a real Distribution (itself
+# gated on status.bucketDomainName from a real Bucket) would set -- this
+# fixture skips straight to "a later reconcile" instead of needing observed
+# Bucket/Distribution resources too.
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: StaticWebsite
+metadata:
+  name: laz-static-website-customdomain-example
+  namespace: laz-testing-crossplane
+spec:
+  bucket:
+    name: laz-static-website-customdomain-demo
+    region: ap-southeast-1
+  zone:
+    name: static.trololo.demotw.com
+    id: Z00921083AT1Z6WZY8LYW
+status:
+  bucketDomainName: laz-static-website-customdomain-demo.s3.ap-southeast-1.amazonaws.com
+  distributionArn: arn:aws:cloudfront::123456789012:distribution/EDFDVBD6EXAMPLE

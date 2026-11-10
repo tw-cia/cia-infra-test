@@ -1,0 +1,18 @@
+# Mocks the ACM Certificate as if AWS has already issued it and reported
+# back the DNS validation record it wants to see. Used with
+# `crossplane composition render --observed-resources` to exercise the
+# cert-validation-record and certificate-validation resources, which are
+# gated on this resource's status and otherwise never render on a cold start.
+apiVersion: acm.aws.m.upbound.io/v1beta1
+kind: Certificate
+metadata:
+  name: mock-certificate
+  namespace: laz-testing-crossplane
+  annotations:
+    crossplane.io/composition-resource-name: certificate
+status:
+  atProvider:
+    arn: arn:aws:acm:us-east-1:123456789012:certificate/mock-certificate-id
+    domainValidationOptions:
+      - resourceRecordName: _acmvalidation.static-two.trololo.demotw.com.
+        resourceRecordValue: validate.acm-validations.aws.
