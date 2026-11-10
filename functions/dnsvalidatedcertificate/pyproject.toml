@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "function-dnsvalidatedcertificate"
+description = "Crossplane composition function: composes a DNS-validated ACM certificate (Certificate + Route53 validation record + CertificateValidation)"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = "Apache-2.0"
+keywords = []
+authors = []
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+  "crossplane-function-sdk-python==0.15.1",
+  "click==8.5.0",
+  "grpcio>=1.73.1",
+]
+
+dynamic = ["version"]
+
+[project.scripts]
+function = "function.main:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["function"]
+
+[tool.hatch.version]
+path = "function/__version__.py"
+validate-bump = false
+
+[tool.hatch.envs.default]
+type = "virtual"
+path = ".venv-default"
+
+[tool.hatch.envs.default.scripts]
+development = "python function/main.py --insecure --debug"
+
+[dependency-groups]
+dev = [
+  "pytest>=9.2.0",
+]

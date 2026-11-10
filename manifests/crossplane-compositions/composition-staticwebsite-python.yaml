@@ -1,0 +1,16 @@
+# A Python-function equivalent of composition-staticwebsite.yaml -- built to
+# prove the two approaches produce identical output (see
+# functions/staticwebsite/) before relying on either one further.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: staticwebsite-python
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: StaticWebsite
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-staticwebsite-python
