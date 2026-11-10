@@ -1,0 +1,47 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: iamroles.platform.cia-infra-test.io
+spec:
+  group: platform.cia-infra-test.io
+  names:
+    kind: IAMRole
+    plural: iamroles
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                roleName:
+                  type: string
+                  description: Name of the IAM role in AWS.
+                description:
+                  type: string
+                  description: Human-readable description of the role.
+                trustedService:
+                  type: string
+                  description: >-
+                    AWS service principal allowed to assume the role,
+                    e.g. lambda.amazonaws.com.
+                managedPolicyArns:
+                  type: array
+                  description: ARNs of managed policies to attach to the role.
+                  items:
+                    type: string
+                  default: []
+              required:
+                - roleName
+                - trustedService
+            status:
+              type: object
+              properties:
+                roleArn:
+                  type: string
+                  description: ARN of the IAM role, once created.
