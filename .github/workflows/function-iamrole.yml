@@ -5,11 +5,15 @@ on:
     branches:
       - main
     paths:
-      - functions/iamrole/**
+      - functions/**
+      - manifests/crossplane-compositions/**
+      - tests/**
       - .github/workflows/function-iamrole.yml
   pull_request:
     paths:
-      - functions/iamrole/**
+      - functions/**
+      - manifests/crossplane-compositions/**
+      - tests/**
       - .github/workflows/function-iamrole.yml
   workflow_dispatch: {}
 
@@ -61,8 +65,35 @@ jobs:
       - name: Run composition render tests
         run: uv run pytest -vv ./tests/
 
+  # Also runs in parallel, independent of the others -- proves
+  # functions/staticwebsite and functions/dnsvalidatedcertificate produce
+  # output equivalent to their Patch-and-Transform originals (see
+  # tests/test_equivalence.py). Unrelated to function-iamrole specifically,
+  # same as render-test above.
+  equivalence-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v10.0.0
+
+      - name: Setup the Crossplane CLI
+        run: |
+          curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+          sudo mv crossplane /usr/local/bin/crossplane
+
+      - name: Build dev images for the Python-function Compositions
+        run: |
+          docker build functions/dnsvalidatedcertificate --tag function-dnsvalidatedcertificate:dev
+          docker build functions/staticwebsite --tag function-staticwebsite:dev
+
+      - name: Run equivalence tests
+        run: uv run pytest -vv ./tests/test_equivalence.py
+
   build:
-    needs: [unit-test, render-test]
+    needs: [unit-test, render-test, equivalence-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

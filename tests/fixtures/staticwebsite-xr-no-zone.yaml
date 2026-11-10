@@ -1,0 +1,11 @@
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: StaticWebsite
+metadata:
+  name: laz-static-website-nodomain-example
+  namespace: laz-testing-crossplane
+spec:
+  bucket:
+    name: laz-static-website-nodomain-demo
+    region: ap-southeast-1
+status:
+  bucketDomainName: laz-static-website-nodomain-demo.s3.ap-southeast-1.amazonaws.com

@@ -1,0 +1,19 @@
+# Points at a locally-built image (see .github/workflows/function-iamrole.yml's
+# equivalence-test job, or build it yourself: `docker build
+# functions/staticwebsite --tag function-staticwebsite:dev`).
+# Only used for the equivalence tests in test_equivalence.py -- not a real
+# deployable Function, hence no real registry package.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-staticwebsite-python
+  annotations:
+    # spec.packagePullPolicy below is the real Crossplane package manager's
+    # concept, for an installed cluster -- `crossplane composition render`'s
+    # own Docker runtime has a separate pull policy, controlled by this
+    # annotation, which otherwise defaults to pulling even when the image
+    # already exists locally.
+    render.crossplane.io/runtime-docker-pull-policy: Never
+spec:
+  package: function-staticwebsite:dev
+  packagePullPolicy: Never
