@@ -40,25 +40,12 @@ jobs:
         working-directory: functions/iamrole
         run: uv run pytest -v
 
-  # We build the amd64 and arm64 runtime images in parallel, then push them as
-  # a single multi-platform package in the push job below.
   build:
     needs: test
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        arch:
-          - amd64
-          - arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v4
-        with:
-          platforms: all
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -67,11 +54,11 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: functions/iamrole
-          platforms: linux/${{ matrix.arch }}
+          platforms: linux/amd64
           target: image
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=docker,dest=/tmp/runtime-${{ matrix.arch }}.tar
+          outputs: type=docker,dest=/tmp/runtime-amd64.tar
 
       - name: Setup the Crossplane CLI
         run: curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
@@ -80,20 +67,19 @@ jobs:
         run: |
           ./crossplane xpkg build \
             --package-root=functions/iamrole/package \
-            --embed-runtime-image-tarball=/tmp/runtime-${{ matrix.arch }}.tar \
-            --package-file=/tmp/function-iamrole-${{ matrix.arch }}.xpkg
+            --embed-runtime-image-tarball=/tmp/runtime-amd64.tar \
+            --package-file=/tmp/function-iamrole-amd64.xpkg
 
-      - name: Upload single-platform package
+      - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: package-${{ matrix.arch }}
-          path: /tmp/function-iamrole-${{ matrix.arch }}.xpkg
+          name: package-amd64
+          path: /tmp/function-iamrole-amd64.xpkg
           if-no-files-found: error
           retention-days: 1
 
-  # Combines the single-platform packages built above into one multi-platform
-  # package and pushes it to GHCR. Skipped on pull requests, since those don't
-  # have push access and shouldn't publish packages anyway.
+  # Pushes the package built above to GHCR. Skipped on pull requests, since
+  # those don't have push access and shouldn't publish packages anyway.
   push:
     if: ${{ github.event_name != 'pull_request' }}
     needs: build
@@ -101,12 +87,11 @@ jobs:
     permissions:
       packages: write
     steps:
-      - name: Download single-platform packages
+      - name: Download package
         uses: actions/download-artifact@v8
         with:
-          pattern: package-*
+          name: package-amd64
           path: /tmp/xpkg
-          merge-multiple: true
 
       - name: Setup the Crossplane CLI
         run: curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
@@ -118,7 +103,5 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push multi-platform package
-        run: |
-          files=$(ls /tmp/xpkg/*.xpkg | paste -sd, -)
-          ./crossplane --verbose xpkg push --package-files "$files" "${{ env.XPKG }}:${{ env.XPKG_VERSION }}"
+      - name: Push package
+        run: ./crossplane --verbose xpkg push --package-files /tmp/xpkg/function-iamrole-amd64.xpkg "${{ env.XPKG }}:${{ env.XPKG_VERSION }}"
