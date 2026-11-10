@@ -1,0 +1,18 @@
+# Points at a locally-built image (see .github/workflows/function-iamrole.yml's
+# equivalence-test job, or build it yourself: `docker build
+# functions/iamrole --tag function-iamrole:dev`). Only used for the
+# equivalence tests in test_equivalence.py -- the real, deployed Function is
+# manifests/crossplane-compositions/function-iamrole.yaml, pointing at the
+# actual pushed registry image.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-iamrole
+  annotations:
+    # See the other *-dev.yaml fixtures for why this annotation (rather than
+    # spec.packagePullPolicy) is what crossplane composition render actually
+    # honors.
+    render.crossplane.io/runtime-docker-pull-policy: Never
+spec:
+  package: function-iamrole:dev
+  packagePullPolicy: Never

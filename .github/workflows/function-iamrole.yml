@@ -65,11 +65,11 @@ jobs:
       - name: Run composition render tests
         run: uv run pytest -vv ./tests/test_render.py
 
-  # Also runs in parallel, independent of the others -- proves
-  # functions/staticwebsite and functions/dnsvalidatedcertificate produce
-  # output equivalent to their Patch-and-Transform originals (see
-  # tests/test_equivalence.py). Unrelated to function-iamrole specifically,
-  # same as render-test above.
+  # Also runs in parallel, independent of the others -- proves that all
+  # three implementations of each composite kind (Patch-and-Transform, a
+  # custom-packaged Python function, and an inline function-python script)
+  # produce equivalent output (see tests/test_equivalence.py). Unrelated to
+  # function-iamrole specifically, same as render-test above.
   equivalence-test:
     runs-on: ubuntu-latest
     steps:
@@ -84,8 +84,9 @@ jobs:
           curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
           sudo mv crossplane /usr/local/bin/crossplane
 
-      - name: Build dev images for the Python-function Compositions
+      - name: Build dev images for the custom-packaged Python functions
         run: |
+          docker build functions/iamrole --tag function-iamrole:dev
           docker build functions/dnsvalidatedcertificate --tag function-dnsvalidatedcertificate:dev
           docker build functions/staticwebsite --tag function-staticwebsite:dev
 

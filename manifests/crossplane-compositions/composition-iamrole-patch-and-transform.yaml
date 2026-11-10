@@ -1,0 +1,123 @@
+# A third implementation of IAMRole, alongside the custom-packaged Python
+# function (composition-iamrole.yaml) and the inline function-python script
+# (composition-iamrole-inline-python.yaml).
+#
+# One real limitation worth calling out: Patch-and-Transform has no way to
+# fan a variable-length array (spec.managedPolicyArns) out into a variable
+# number of resources -- resources are a static list declared in this YAML,
+# full stop. The Python implementations handle any number of ARNs with a
+# `for` loop; this one instead declares a fixed number of policy-attachment
+# "slots" below (MAX_MANAGED_POLICY_ARNS), each gated on its own array index
+# existing, so unused slots simply don't render. If you ever need more ARNs
+# than that, you have to add another slot here by hand.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: iamrole-patch-and-transform
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: IAMRole
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: role
+            base:
+              apiVersion: iam.aws.m.upbound.io/v1beta1
+              kind: Role
+              spec:
+                forProvider: {}
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.roleName
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.description
+                toFieldPath: spec.forProvider.description
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.trustedService
+                  strategy: string
+                  string:
+                    fmt: >-
+                      {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"%s"},"Action":"sts:AssumeRole"}]}
+                toFieldPath: spec.forProvider.assumeRolePolicy
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.roleArn
+
+          # Slot 0 of MAX_MANAGED_POLICY_ARNS (see the file header comment).
+          - name: policy-attachment-0
+            base:
+              apiVersion: iam.aws.m.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider: {}
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.roleName
+                toFieldPath: spec.forProvider.role
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.managedPolicyArns[0]
+                toFieldPath: spec.forProvider.policyArn
+                policy:
+                  fromFieldPath: Required
+
+          # Slot 1.
+          - name: policy-attachment-1
+            base:
+              apiVersion: iam.aws.m.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider: {}
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.roleName
+                toFieldPath: spec.forProvider.role
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.managedPolicyArns[1]
+                toFieldPath: spec.forProvider.policyArn
+                policy:
+                  fromFieldPath: Required
+
+          # Slot 2.
+          - name: policy-attachment-2
+            base:
+              apiVersion: iam.aws.m.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider: {}
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.roleName
+                toFieldPath: spec.forProvider.role
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.managedPolicyArns[2]
+                toFieldPath: spec.forProvider.policyArn
+                policy:
+                  fromFieldPath: Required

@@ -1,0 +1,10 @@
+apiVersion: iam.aws.m.upbound.io/v1beta1
+kind: Role
+metadata:
+  name: mock-role
+  namespace: laz-testing-crossplane
+  annotations:
+    crossplane.io/composition-resource-name: role
+status:
+  atProvider:
+    arn: arn:aws:iam::123456789012:role/laz-lambda-example-role
