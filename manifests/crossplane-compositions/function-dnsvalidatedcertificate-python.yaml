@@ -6,5 +6,5 @@ kind: Function
 metadata:
   name: function-dnsvalidatedcertificate-python
 spec:
-  package: ghcr.io/tw-cia/cia-infra-test/function-dnsvalidatedcertificate:v0.1.0
+  package: ghcr.io/tw-cia/cia-infra-test/function-dnsvalidatedcertificate:v0.1.30
   packagePullPolicy: IfNotPresent
