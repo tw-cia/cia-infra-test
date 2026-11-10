@@ -25,9 +25,9 @@ env:
   XP_CHANNEL: stable
   XP_VERSION: v2.5.0
 
-  # Must match spec.package's repository in
-  # manifests/crossplane-compositions/function-iamrole.yaml.
-  XPKG: ghcr.io/tw-cia/cia-infra-test/function-iamrole
+  # Shared across all three functions below. Each one's full registry path
+  # is ghcr.io/tw-cia/cia-infra-test/function-<name>, matching spec.package
+  # in manifests/crossplane-compositions/function-<name>*.yaml.
   XPKG_VERSION: v0.1.${{ github.run_number }}
 
 jobs:
@@ -92,7 +92,7 @@ jobs:
       - name: Run equivalence tests
         run: uv run pytest -vv ./tests/test_equivalence.py
 
-  build:
+  build-iamrole:
     needs: [unit-test, render-test, equivalence-test]
     runs-on: ubuntu-latest
     steps:
@@ -125,16 +125,92 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: package-amd64
+          name: package-iamrole-amd64
           path: /tmp/function-iamrole-amd64.xpkg
           if-no-files-found: error
           retention-days: 1
 
-  # Pushes the package built above to GHCR. Skipped on pull requests, since
+  build-staticwebsite:
+    needs: [unit-test, render-test, equivalence-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build runtime image
+        uses: docker/build-push-action@v7
+        with:
+          context: functions/staticwebsite
+          platforms: linux/amd64
+          target: image
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/runtime-amd64.tar
+
+      - name: Setup the Crossplane CLI
+        run: curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+
+      - name: Build Crossplane package
+        run: |
+          ./crossplane xpkg build \
+            --package-root=functions/staticwebsite/package \
+            --embed-runtime-image-tarball=/tmp/runtime-amd64.tar \
+            --package-file=/tmp/function-staticwebsite-amd64.xpkg
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-staticwebsite-amd64
+          path: /tmp/function-staticwebsite-amd64.xpkg
+          if-no-files-found: error
+          retention-days: 1
+
+  build-dnsvalidatedcertificate:
+    needs: [unit-test, render-test, equivalence-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build runtime image
+        uses: docker/build-push-action@v7
+        with:
+          context: functions/dnsvalidatedcertificate
+          platforms: linux/amd64
+          target: image
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/runtime-amd64.tar
+
+      - name: Setup the Crossplane CLI
+        run: curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+
+      - name: Build Crossplane package
+        run: |
+          ./crossplane xpkg build \
+            --package-root=functions/dnsvalidatedcertificate/package \
+            --embed-runtime-image-tarball=/tmp/runtime-amd64.tar \
+            --package-file=/tmp/function-dnsvalidatedcertificate-amd64.xpkg
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-dnsvalidatedcertificate-amd64
+          path: /tmp/function-dnsvalidatedcertificate-amd64.xpkg
+          if-no-files-found: error
+          retention-days: 1
+
+  # Pushes the packages built above to GHCR. Skipped on pull requests, since
   # those don't have push access and shouldn't publish packages anyway.
-  push:
+  push-iamrole:
     if: ${{ github.event_name != 'pull_request' }}
-    needs: build
+    needs: build-iamrole
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -142,7 +218,7 @@ jobs:
       - name: Download package
         uses: actions/download-artifact@v8
         with:
-          name: package-amd64
+          name: package-iamrole-amd64
           path: /tmp/xpkg
 
       - name: Setup the Crossplane CLI
@@ -156,4 +232,56 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push package
-        run: ./crossplane --verbose xpkg push --package-files /tmp/xpkg/function-iamrole-amd64.xpkg "${{ env.XPKG }}:${{ env.XPKG_VERSION }}"
+        run: ./crossplane --verbose xpkg push --package-files /tmp/xpkg/function-iamrole-amd64.xpkg "ghcr.io/tw-cia/cia-infra-test/function-iamrole:${{ env.XPKG_VERSION }}"
+
+  push-staticwebsite:
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: build-staticwebsite
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v8
+        with:
+          name: package-staticwebsite-amd64
+          path: /tmp/xpkg
+
+      - name: Setup the Crossplane CLI
+        run: curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push package
+        run: ./crossplane --verbose xpkg push --package-files /tmp/xpkg/function-staticwebsite-amd64.xpkg "ghcr.io/tw-cia/cia-infra-test/function-staticwebsite:${{ env.XPKG_VERSION }}"
+
+  push-dnsvalidatedcertificate:
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: build-dnsvalidatedcertificate
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v8
+        with:
+          name: package-dnsvalidatedcertificate-amd64
+          path: /tmp/xpkg
+
+      - name: Setup the Crossplane CLI
+        run: curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push package
+        run: ./crossplane --verbose xpkg push --package-files /tmp/xpkg/function-dnsvalidatedcertificate-amd64.xpkg "ghcr.io/tw-cia/cia-infra-test/function-dnsvalidatedcertificate:${{ env.XPKG_VERSION }}"

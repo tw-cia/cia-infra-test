@@ -1,10 +1,10 @@
-# Built from functions/dnsvalidatedcertificate/ -- see that directory's
-# README for how to build and push this package. Replace spec.package with
-# the real registry path before applying.
+# Built and pushed by .github/workflows/function-iamrole.yml's
+# build-dnsvalidatedcertificate/push-dnsvalidatedcertificate jobs. Bump the
+# tag to match whichever v0.1.<run-number> you want this Function pinned to.
 apiVersion: pkg.crossplane.io/v1
 kind: Function
 metadata:
   name: function-dnsvalidatedcertificate-python
 spec:
-  package: REGISTRY_PLACEHOLDER/function-dnsvalidatedcertificate:v0.1.0
+  package: ghcr.io/tw-cia/cia-infra-test/function-dnsvalidatedcertificate:v0.1.0
   packagePullPolicy: IfNotPresent
