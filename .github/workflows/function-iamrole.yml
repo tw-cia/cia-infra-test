@@ -27,7 +27,7 @@ env:
   XPKG_VERSION: v0.1.${{ github.run_number }}
 
 jobs:
-  test:
+  unit-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -40,10 +40,10 @@ jobs:
         working-directory: functions/iamrole
         run: uv run pytest -v
 
-  # Runs in parallel with `test`, not after it -- this exercises the
+  # Runs in parallel with `unit-test`, not after it -- this exercises the
   # Compositions directly via `crossplane composition render` (see
   # tests/test_render.py), which is unrelated to the function-iamrole
-  # package `test` builds/tests/pushes below.
+  # package `unit-test` builds/tests/pushes below.
   render-test:
     runs-on: ubuntu-latest
     steps:
@@ -62,7 +62,7 @@ jobs:
         run: uv run pytest -vv ./tests/
 
   build:
-    needs: test
+    needs: [unit-test, render-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
