@@ -70,9 +70,3 @@ spec:
                 certificateArn:
                   type: string
                   description: ARN of the ACM certificate for domainName, once requested.
-                certValidationRecordName:
-                  type: string
-                  description: DNS name of the ACM DNS-validation record.
-                certValidationRecordValue:
-                  type: string
-                  description: DNS value of the ACM DNS-validation record.

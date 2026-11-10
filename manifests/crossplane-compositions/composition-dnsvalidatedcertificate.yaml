@@ -1,0 +1,98 @@
+# A DNS-validated ACM certificate: requests the certificate, creates the
+# Route53 CNAME record ACM asks for, then waits for ACM to confirm validation.
+# Extracted out of composition-staticwebsite.yaml so it's reusable by anything
+# that needs a validated cert for a domain, not just a static website.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: dnsvalidatedcertificate-acm-route53
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: DnsValidatedCertificate
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: certificate
+            base:
+              apiVersion: acm.aws.m.upbound.io/v1beta1
+              kind: Certificate
+              spec:
+                forProvider:
+                  region: us-east-1
+                  validationMethod: DNS
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.domainName
+                toFieldPath: spec.forProvider.domainName
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.certificateArn
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.domainValidationOptions[0].resourceRecordName
+                toFieldPath: status.certValidationRecordName
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.domainValidationOptions[0].resourceRecordValue
+                toFieldPath: status.certValidationRecordValue
+
+          # Gated on status.certValidationRecordName/Value, which only exist
+          # once the Certificate above has been created and ACM has reported
+          # back what DNS record it wants to see.
+          - name: cert-validation-record
+            base:
+              apiVersion: route53.aws.m.upbound.io/v1beta1
+              kind: Record
+              spec:
+                forProvider:
+                  type: CNAME
+                  ttl: 300
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.certValidationRecordName
+                toFieldPath: spec.forProvider.name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.certValidationRecordValue
+                toFieldPath: spec.forProvider.records[0]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.zone.id
+                toFieldPath: spec.forProvider.zoneId
+
+          # Gated on status.certificateArn -- waits for ACM to confirm the
+          # validation record above was seen before this resource renders.
+          - name: certificate-validation
+            base:
+              apiVersion: acm.aws.m.upbound.io/v1beta1
+              kind: CertificateValidation
+              spec:
+                forProvider:
+                  region: us-east-1
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.certificateArn
+                toFieldPath: spec.forProvider.certificateArn
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.certValidationRecordName
+                toFieldPath: spec.forProvider.validationRecordFqdns[0]
+                policy:
+                  fromFieldPath: Required

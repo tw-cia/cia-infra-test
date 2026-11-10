@@ -1,0 +1,9 @@
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: DnsValidatedCertificate
+metadata:
+  name: laz-dns-validated-certificate-example-two
+  namespace: laz-testing-crossplane
+spec:
+  domainName: static-two.trololo.demotw.com
+  zone:
+    id: Z00921083AT1Z6WZY8LYW
