@@ -6,5 +6,5 @@ kind: Function
 metadata:
   name: function-iamrole
 spec:
-  package: ghcr.io/tw-cia/cia-infra-test/function-iamrole:v0.1.0
+  package: ghcr.io/tw-cia/cia-infra-test/function-iamrole:v0.1.4
   packagePullPolicy: IfNotPresent
