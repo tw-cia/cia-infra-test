@@ -61,6 +61,12 @@ spec:
                 cloudfrontDomainName:
                   type: string
                   description: Public CloudFront domain name to actually visit the site on.
+                distributionArn:
+                  type: string
+                  description: ARN of the CloudFront distribution, once created.
+                bucketDomainName:
+                  type: string
+                  description: The bucket's regional domain name, used as the CloudFront origin.
                 certificateArn:
                   type: string
                   description: ARN of the ACM certificate for domainName, once requested.

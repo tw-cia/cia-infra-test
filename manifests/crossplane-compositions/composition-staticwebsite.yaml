@@ -1,8 +1,10 @@
-# Classic "S3 website hosting behind a CloudFront custom origin" pattern:
-# simple (no OriginAccessControl/circular distribution-ARN bucket policy
-# needed), at the cost of the bucket's website endpoint being directly,
-# publicly readable as well as via CloudFront. Good enough for a demo site;
-# switch to CloudFront + OAC + a private bucket for anything real.
+# Private S3 bucket behind CloudFront via Origin Access Control (OAC):
+# CloudFront signs requests to the bucket with SigV4, the bucket policy
+# only trusts the cloudfront.amazonaws.com principal scoped to this
+# distribution's ARN, and public access is fully blocked at the bucket.
+# The bucket policy depends on the Distribution's ARN, which only exists
+# once the Distribution does -- that ordering is handled by gating the
+# bucket-policy resource on status.distributionArn (Required policy).
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
@@ -36,6 +38,9 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.bucket.region
                 toFieldPath: spec.forProvider.region
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.bucketRegionalDomainName
+                toFieldPath: status.bucketDomainName
 
           - name: bucket-public-access-block
             base:
@@ -43,10 +48,10 @@ spec:
               kind: BucketPublicAccessBlock
               spec:
                 forProvider:
-                  blockPublicAcls: false
-                  blockPublicPolicy: false
-                  ignorePublicAcls: false
-                  restrictPublicBuckets: false
+                  blockPublicAcls: true
+                  blockPublicPolicy: true
+                  ignorePublicAcls: true
+                  restrictPublicBuckets: true
                 providerConfigRef:
                   kind: ClusterProviderConfig
                   name: pod-identity
@@ -58,28 +63,31 @@ spec:
                 fromFieldPath: spec.bucket.region
                 toFieldPath: spec.forProvider.region
 
-          - name: bucket-website-configuration
+          - name: origin-access-control
             base:
-              apiVersion: s3.aws.m.upbound.io/v1beta1
-              kind: BucketWebsiteConfiguration
+              apiVersion: cloudfront.aws.m.upbound.io/v1beta1
+              kind: OriginAccessControl
               spec:
                 forProvider:
-                  indexDocument:
-                    suffix: index.html
+                  originAccessControlOriginType: s3
+                  signingBehavior: always
+                  signingProtocol: sigv4
                 providerConfigRef:
                   kind: ClusterProviderConfig
                   name: pod-identity
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.bucket.name
-                toFieldPath: spec.forProvider.bucket
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.bucket.region
-                toFieldPath: spec.forProvider.region
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.indexDocument
-                toFieldPath: spec.forProvider.indexDocument.suffix
+                toFieldPath: spec.forProvider.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-oac"
 
+          # Scoped to this distribution only, via the Required-gated
+          # status.distributionArn patch below -- the policy simply isn't
+          # rendered until the Distribution exists and reports its ARN.
           - name: bucket-policy
             base:
               apiVersion: s3.aws.m.upbound.io/v1beta1
@@ -96,14 +104,18 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.bucket.region
                 toFieldPath: spec.forProvider.region
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.bucket.name
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.bucket.name
+                    - fromFieldPath: status.distributionArn
+                  strategy: string
+                  string:
+                    fmt: >-
+                      {"Version":"2012-10-17","Statement":[{"Sid":"AllowCloudFrontServicePrincipal","Effect":"Allow","Principal":{"Service":"cloudfront.amazonaws.com"},"Action":"s3:GetObject","Resource":"arn:aws:s3:::%s/*","Condition":{"StringEquals":{"AWS:SourceArn":"%s"}}}]}
                 toFieldPath: spec.forProvider.policy
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: '{"Version":"2012-10-17","Statement":[{"Sid":"PublicReadForWebsite","Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::%[1]s/*"}]}'
+                policy:
+                  fromFieldPath: Required
 
           # The following three resources only come into being when
           # spec.zone.name is set, via Required-policy patches: when the
@@ -201,15 +213,11 @@ spec:
                   viewerCertificate:
                     cloudfrontDefaultCertificate: true
                   origin:
-                    - originId: s3-website-origin
-                      customOriginConfig:
-                        httpPort: 80
-                        httpsPort: 443
-                        originProtocolPolicy: http-only
-                        originSslProtocols:
-                          - TLSv1.2
+                    - originId: s3-origin
+                      originAccessControlIdSelector:
+                        matchControllerRef: true
                   defaultCacheBehavior:
-                    targetOriginId: s3-website-origin
+                    targetOriginId: s3-origin
                     viewerProtocolPolicy: redirect-to-https
                     allowedMethods: [GET, HEAD]
                     cachedMethods: [GET, HEAD]
@@ -223,15 +231,11 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.indexDocument
                 toFieldPath: spec.forProvider.defaultRootObject
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: spec.bucket.name
-                    - fromFieldPath: spec.bucket.region
-                  strategy: string
-                  string:
-                    fmt: "%s.s3-website-%s.amazonaws.com"
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.bucketDomainName
                 toFieldPath: spec.forProvider.origin[0].domainName
+                policy:
+                  fromFieldPath: Required
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.zone.name
                 toFieldPath: spec.forProvider.aliases[0]
@@ -263,6 +267,9 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.domainName
                 toFieldPath: status.cloudfrontDomainName
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.distributionArn
 
           # Points domainName at the distribution. Gated on
           # status.cloudfrontDomainName, which only exists once the
