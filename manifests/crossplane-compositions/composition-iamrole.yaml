@@ -1,11 +1,7 @@
 # Composes an IAM role (assumable by a single AWS service principal) plus one
-<<<<<<< HEAD
-# RolePolicyAttachment per managed policy ARN, using function-python.
-=======
 # RolePolicyAttachment per managed policy ARN. The compose logic lives in the
 # function-iamrole package (see functions/iamrole/), not inlined here, so it's
 # unit-testable and reusable independently of this Composition.
->>>>>>> 365e844 (Switch to our own python function pushed on ghcr)
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
