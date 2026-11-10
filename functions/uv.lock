@@ -2,6 +2,13 @@ version = 1
 revision = 3
 requires-python = ">=3.11, <3.14"
 
+[manifest]
+members = [
+    "function-dnsvalidatedcertificate",
+    "function-iamrole",
+    "function-staticwebsite",
+]
+
 [[package]]
 name = "annotated-types"
 version = "0.8.0"
@@ -48,7 +55,55 @@ wheels = [
 
 [[package]]
 name = "function-dnsvalidatedcertificate"
-source = { editable = "." }
+source = { editable = "dnsvalidatedcertificate" }
+dependencies = [
+    { name = "click" },
+    { name = "crossplane-function-sdk-python" },
+    { name = "grpcio" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = "==8.5.0" },
+    { name = "crossplane-function-sdk-python", specifier = "==0.15.1" },
+    { name = "grpcio", specifier = ">=1.73.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.2.0" }]
+
+[[package]]
+name = "function-iamrole"
+source = { editable = "iamrole" }
+dependencies = [
+    { name = "click" },
+    { name = "crossplane-function-sdk-python" },
+    { name = "grpcio" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = "==8.5.0" },
+    { name = "crossplane-function-sdk-python", specifier = "==0.15.1" },
+    { name = "grpcio", specifier = ">=1.73.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.2.0" }]
+
+[[package]]
+name = "function-staticwebsite"
+source = { editable = "staticwebsite" }
 dependencies = [
     { name = "click" },
     { name = "crossplane-function-sdk-python" },

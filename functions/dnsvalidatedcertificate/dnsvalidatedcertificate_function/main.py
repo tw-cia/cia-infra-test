@@ -3,7 +3,7 @@
 import click
 from crossplane.function import logging, runtime
 
-from function import fn
+from dnsvalidatedcertificate_function import fn
 
 
 @click.command()

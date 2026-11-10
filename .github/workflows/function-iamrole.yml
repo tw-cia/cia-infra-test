@@ -41,8 +41,8 @@ jobs:
         uses: astral-sh/setup-uv@v10.0.0
 
       - name: Run unit tests
-        working-directory: functions/iamrole
-        run: uv run pytest -v
+        working-directory: functions
+        run: uv run pytest */tests -v
 
   # Runs in parallel with `unit-test`, not after it -- this exercises the
   # Compositions directly via `crossplane composition render` (see
@@ -63,7 +63,7 @@ jobs:
           sudo mv crossplane /usr/local/bin/crossplane
 
       - name: Run composition render tests
-        run: uv run pytest -vv ./tests/
+        run: uv run pytest -vv ./tests/test_render.py
 
   # Also runs in parallel, independent of the others -- proves
   # functions/staticwebsite and functions/dnsvalidatedcertificate produce

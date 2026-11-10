@@ -1,0 +1,8 @@
+[tool.uv.workspace]
+members = ["iamrole", "staticwebsite", "dnsvalidatedcertificate"]
+
+[tool.pytest.ini_options]
+# Each member has its own tests/test_fn.py -- importlib mode resolves them
+# by file path instead of a constructed module name, avoiding a collision
+# between identically-named test modules in different directories.
+addopts = "--import-mode=importlib"

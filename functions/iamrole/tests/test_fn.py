@@ -7,7 +7,7 @@ from google.protobuf import duration_pb2 as durationpb
 from google.protobuf import json_format
 from google.protobuf import struct_pb2 as structpb
 
-from function import fn
+from iamrole_function import fn
 
 PROVIDER_CONFIG = {"kind": "ClusterProviderConfig", "name": "pod-identity"}
 

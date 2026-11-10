@@ -25,13 +25,13 @@ dependencies = [
 dynamic = ["version"]
 
 [project.scripts]
-function = "function.main:cli"
+function = "staticwebsite_function.main:cli"
 
 [tool.hatch.build.targets.wheel]
-packages = ["function"]
+packages = ["staticwebsite_function"]
 
 [tool.hatch.version]
-path = "function/__version__.py"
+path = "staticwebsite_function/__version__.py"
 validate-bump = false
 
 [tool.hatch.envs.default]
@@ -39,7 +39,7 @@ type = "virtual"
 path = ".venv-default"
 
 [tool.hatch.envs.default.scripts]
-development = "python function/main.py --insecure --debug"
+development = "python staticwebsite_function/main.py --insecure --debug"
 
 [dependency-groups]
 dev = [
