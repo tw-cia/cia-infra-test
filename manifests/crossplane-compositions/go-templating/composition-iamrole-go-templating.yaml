@@ -1,0 +1,82 @@
+# A fourth implementation of IAMRole, alongside Patch-and-Transform
+# (../yaml-patching/composition-iamrole-yaml-patching.yaml), the
+# custom-packaged Python function (../custom-python/composition-iamrole-custom-python.yaml),
+# and the inline Python script (../inline-python/composition-iamrole-inline-python.jsonnet).
+#
+# Unlike Patch-and-Transform, a real `range` over spec.managedPolicyArns
+# handles any number of ARNs -- no fixed "slot" limit to hand-maintain.
+#
+# This template deliberately leaves the default `missingkey=default`
+# template option in place (rather than the stricter `missingkey=error`
+# used by this function's own docs) so that optional fields -- spec.description,
+# spec.managedPolicyArns -- can be read as plain nil/zero values and guarded
+# with `if`/`default`, the same way a Helm chart would. The tradeoff: a
+# genuine typo in a field path silently renders as an empty value instead of
+# failing loudly.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: iamrole-go-templating
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: IAMRole
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $spec := .observed.composite.resource.spec }}
+            {{- $observed := .observed.resources | default (dict) }}
+            {{- $assumeRolePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" $spec.trustedService) "Action" "sts:AssumeRole")) }}
+            apiVersion: iam.aws.m.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: role
+                crossplane.io/external-name: {{ $spec.roleName | quote }}
+            spec:
+              forProvider:
+                assumeRolePolicy: {{ $assumeRolePolicy | toJson | quote }}
+                {{- if $spec.description }}
+                description: {{ $spec.description | quote }}
+                {{- end }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- range $i, $arn := $spec.managedPolicyArns | default (list) }}
+            ---
+            apiVersion: iam.aws.m.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: policy-attachment-{{ $i }}
+            spec:
+              forProvider:
+                policyArn: {{ $arn | quote }}
+                role: {{ $spec.roleName | quote }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- end }}
+            {{- $roleArn := dig "role" "resource" "status" "atProvider" "arn" "" $observed }}
+            {{- if $roleArn }}
+            ---
+            apiVersion: platform.cia-infra-test.io/v1alpha1
+            kind: IAMRole
+            status:
+              roleArn: {{ $roleArn | quote }}
+            {{- end }}
+    # See ../function-auto-ready.yaml -- this function's `gotemplating.fn.crossplane.io/ready`
+    # annotation is an alternative to chaining function-auto-ready, but every
+    # other custom/inline method in this repo relies on function-auto-ready, so
+    # this stays consistent with them rather than mixing readiness mechanisms.
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

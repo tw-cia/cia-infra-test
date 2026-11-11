@@ -1,0 +1,101 @@
+# A fourth implementation of DnsValidatedCertificate -- see
+# composition-iamrole-go-templating.yaml for the missingkey/readiness notes
+# that apply to all three kinds in this directory.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: dnsvalidatedcertificate-go-templating
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: DnsValidatedCertificate
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $spec := .observed.composite.resource.spec }}
+            {{- $statusIn := .observed.composite.resource.status | default (dict) }}
+            {{- $observed := .observed.resources | default (dict) }}
+            {{- $domainName := $spec.domainName }}
+            {{- $zoneId := $spec.zone.id }}
+            apiVersion: acm.aws.m.upbound.io/v1beta1
+            kind: Certificate
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: certificate
+            spec:
+              forProvider:
+                region: us-east-1
+                validationMethod: DNS
+                domainName: {{ $domainName | quote }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- $atProvider := dig "certificate" "resource" "status" "atProvider" (dict) $observed }}
+            {{- $statusOut := dict }}
+            {{- if $atProvider.arn }}
+            {{- $_ := set $statusOut "certificateArn" $atProvider.arn }}
+            {{- end }}
+            {{- $validationOptions := $atProvider.domainValidationOptions }}
+            {{- if $validationOptions }}
+            {{- $firstOption := first $validationOptions }}
+            {{- if $firstOption.resourceRecordName }}
+            {{- $_ := set $statusOut "certValidationRecordName" $firstOption.resourceRecordName }}
+            {{- end }}
+            {{- if $firstOption.resourceRecordValue }}
+            {{- $_ := set $statusOut "certValidationRecordValue" $firstOption.resourceRecordValue }}
+            {{- end }}
+            {{- end }}
+            {{- if $statusOut }}
+            ---
+            apiVersion: platform.cia-infra-test.io/v1alpha1
+            kind: DnsValidatedCertificate
+            status: {{ $statusOut | toYaml | nindent 2 }}
+            {{- end }}
+            {{- $validationRecordName := $statusIn.certValidationRecordName }}
+            {{- $validationRecordValue := $statusIn.certValidationRecordValue }}
+            {{- if and $validationRecordName $validationRecordValue }}
+            ---
+            apiVersion: route53.aws.m.upbound.io/v1beta1
+            kind: Record
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cert-validation-record
+            spec:
+              forProvider:
+                type: CNAME
+                ttl: 300
+                name: {{ $validationRecordName | quote }}
+                records: [{{ $validationRecordValue | quote }}]
+                zoneId: {{ $zoneId | quote }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- end }}
+            {{- $certificateArn := $statusIn.certificateArn }}
+            {{- if and $certificateArn $validationRecordName }}
+            ---
+            apiVersion: acm.aws.m.upbound.io/v1beta1
+            kind: CertificateValidation
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: certificate-validation
+            spec:
+              forProvider:
+                region: us-east-1
+                certificateArn: {{ $certificateArn | quote }}
+                validationRecordFqdns: [{{ $validationRecordName | quote }}]
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- end }}
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready
