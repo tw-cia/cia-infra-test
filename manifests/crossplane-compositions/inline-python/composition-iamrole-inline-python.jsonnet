@@ -12,7 +12,7 @@
   apiVersion: "apiextensions.crossplane.io/v1",
   kind: "Composition",
   metadata: {
-    name: "iamrole-jsonnet",
+    name: "iamrole-inline-python",
   },
   spec: {
     compositeTypeRef: {

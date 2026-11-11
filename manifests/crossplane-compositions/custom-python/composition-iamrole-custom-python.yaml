@@ -5,7 +5,7 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: iamrole-python
+  name: iamrole-custom-python
 spec:
   compositeTypeRef:
     apiVersion: platform.cia-infra-test.io/v1alpha1

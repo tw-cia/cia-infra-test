@@ -13,7 +13,7 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: iamrole-patch-and-transform
+  name: iamrole-yaml-patching
 spec:
   compositeTypeRef:
     apiVersion: platform.cia-infra-test.io/v1alpha1
