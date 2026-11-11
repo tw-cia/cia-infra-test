@@ -1,4 +1,4 @@
-name: function-iamrole
+name: pipeline
 
 on:
   push:
@@ -9,14 +9,14 @@ on:
       - manifests/crossplane-compositions/**
       - scripts/**
       - tests/**
-      - .github/workflows/function-iamrole.yml
+      - .github/workflows/pipeline.yml
   pull_request:
     paths:
       - functions/**
       - manifests/crossplane-compositions/**
       - scripts/**
       - tests/**
-      - .github/workflows/function-iamrole.yml
+      - .github/workflows/pipeline.yml
   workflow_dispatch: {}
 
 permissions:
