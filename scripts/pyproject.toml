@@ -1,0 +1,19 @@
+[project]
+name = "scripts"
+version = "0.1.0"
+description = "compose(req, rsp) functions for the inline-python Compositions, interpolated into manifests/crossplane-compositions via Jsonnet importstr"
+requires-python = ">=3.12"
+dependencies = [
+  "crossplane-function-sdk-python==0.15.1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+# So `import iamrole` etc. resolves from tests/ without needing __init__.py
+# files or a conftest.py -- iamrole.py et al are bare top-level modules, not
+# an installable package.
+pythonpath = ["."]

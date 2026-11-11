@@ -1,5 +1,5 @@
-"""Proves that each of the three implementations we have per composite kind
-(yaml-patching, custom-python, inline-python) produce equivalent output,
+"""Proves that each of the four implementations we have per composite kind
+(yaml-patching, custom-python, inline-python, go-templating) produce equivalent output,
 across the reconcile-pass scenarios that actually differ (cold start,
 partially observed, fully observed, and -- for StaticWebsite -- the
 no-custom-domain case that currently triggers a known bug all
@@ -100,13 +100,15 @@ def assert_all_equivalent(renders: dict):
 YAML_PATCHING = "./manifests/crossplane-compositions/yaml-patching"
 INLINE_PYTHON = "./manifests/crossplane-compositions/inline-python"
 CUSTOM_PYTHON = "./manifests/crossplane-compositions/custom-python"
+GO_TEMPLATING = "./manifests/crossplane-compositions/go-templating"
 
 # Patch-and-Transform doesn't need function-auto-ready -- it has built-in
-# auto-ready detection. Every custom/inline-python implementation does, so
-# their function fixture directories each bundle it alongside the
-# implementation's own function.
+# auto-ready detection. Every custom/inline-python/go-templating
+# implementation does, so their function fixture directories each bundle it
+# alongside the implementation's own function.
 PATCH_AND_TRANSFORM = f"{YAML_PATCHING}/function-patch-and-transform.yaml"
 FUNCTION_PYTHON = "./tests/fixtures/functions-python"
+FUNCTION_GO_TEMPLATING = "./tests/fixtures/functions-go-templating"
 
 # The one piece of per-kind mapping that's unavoidable: each custom-python
 # kind is backed by its own dev-built image, so needs its own function
@@ -127,7 +129,7 @@ def composition_path(method_dir: str, kind: str, ext: str = "yaml") -> str:
 
 
 def render_all_methods(xr: str, kind: str, observed_resources: str | None = None) -> dict:
-    """Renders the same XR through all three method directories for the
+    """Renders the same XR through all four method directories for the
     given composite kind. Feed straight into assert_all_equivalent."""
     return {
         "yaml-patching": render(
@@ -141,6 +143,9 @@ def render_all_methods(xr: str, kind: str, observed_resources: str | None = None
             evaluate_jsonnet(composition_path(INLINE_PYTHON, kind, ext="jsonnet")),
             FUNCTION_PYTHON,
             observed_resources,
+        ),
+        "go-templating": render(
+            xr, composition_path(GO_TEMPLATING, kind), FUNCTION_GO_TEMPLATING, observed_resources
         ),
     }
 

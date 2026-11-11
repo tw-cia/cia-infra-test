@@ -20,7 +20,7 @@
         input: {
           apiVersion: "python.fn.crossplane.io/v1beta1",
           kind: "Script",
-          script: importstr "scripts/dnsvalidatedcertificate.py",
+          script: importstr "../../../scripts/dnsvalidatedcertificate.py",
         },
       },
       // See function-auto-ready.yaml -- without this, this Composition's

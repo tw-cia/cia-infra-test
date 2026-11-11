@@ -21,7 +21,7 @@
         input: {
           apiVersion: "python.fn.crossplane.io/v1beta1",
           kind: "Script",
-          script: importstr "scripts/staticwebsite.py",
+          script: importstr "../../../scripts/staticwebsite.py",
         },
       },
       // See function-auto-ready.yaml -- without this, this Composition's

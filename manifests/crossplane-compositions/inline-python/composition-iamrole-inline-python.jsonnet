@@ -2,8 +2,9 @@
 // (../yaml-patching/composition-iamrole-yaml-patching.yaml) and the
 // custom-packaged Python function (../custom-python/composition-iamrole-custom-python.yaml).
 //
-// The script lives in its own file (scripts/iamrole.py) and is spliced in with
-// `importstr` at Argo CD sync time -- no manual YAML indentation, no
+// The script lives in its own tested project (/scripts/iamrole.py, see
+// scripts/tests/test_iamrole.py) and is spliced in with `importstr` at
+// Argo CD sync time -- no manual YAML indentation, no
 // generated ConfigMap byproduct (contrast with the Kustomize approach),
 // since importstr produces a plain string value rather than text-templating
 // a YAML block scalar. Argo CD auto-detects .jsonnet files in a directory
@@ -27,7 +28,7 @@
         input: {
           apiVersion: "python.fn.crossplane.io/v1beta1",
           kind: "Script",
-          script: importstr "scripts/iamrole.py",
+          script: importstr "../../../scripts/iamrole.py",
         },
       },
       // See function-auto-ready.yaml -- without this, this Composition's
