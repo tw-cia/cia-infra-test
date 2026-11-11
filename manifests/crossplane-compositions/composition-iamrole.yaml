@@ -15,3 +15,10 @@ spec:
     - step: compose
       functionRef:
         name: function-iamrole
+    # function-iamrole never sets a desired resource's Ready field, so
+    # without this step the XR would stay "Creating" forever regardless of
+    # how healthy the real Role/RolePolicyAttachment are -- see
+    # function-auto-ready.yaml.
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

@@ -23,6 +23,12 @@
           script: importstr "scripts/dnsvalidatedcertificate.py",
         },
       },
+      // See function-auto-ready.yaml -- without this, this Composition's
+      // resources never get marked Ready regardless of their real AWS state.
+      {
+        step: "auto-ready",
+        functionRef: { name: "function-auto-ready" },
+      },
     ],
   },
 }

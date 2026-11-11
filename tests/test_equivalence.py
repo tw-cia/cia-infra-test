@@ -99,11 +99,15 @@ def assert_all_equivalent(renders: dict):
         assert renders[label] == reference, f"{label} != {reference_label}"
 
 
+# Patch-and-Transform doesn't need function-auto-ready -- it has built-in
+# auto-ready detection. Every custom/inline/jsonnet implementation does, so
+# their function directories each bundle it alongside the implementation's
+# own function.
 PATCH_AND_TRANSFORM = "./manifests/crossplane-compositions/function-patch-and-transform.yaml"
-FUNCTION_PYTHON = "./manifests/crossplane-compositions/function-python.yaml"
-IAMROLE_FUNCTION = "./tests/fixtures/function-iamrole-dev.yaml"
-DNS_CERT_PYTHON_FUNCTION = "./tests/fixtures/function-dnsvalidatedcertificate-python-dev.yaml"
-STATICWEBSITE_PYTHON_FUNCTION = "./tests/fixtures/function-staticwebsite-python-dev.yaml"
+FUNCTION_PYTHON = "./tests/fixtures/functions-python"
+IAMROLE_FUNCTION = "./tests/fixtures/functions-iamrole"
+DNS_CERT_PYTHON_FUNCTION = "./tests/fixtures/functions-dnsvalidatedcertificate"
+STATICWEBSITE_PYTHON_FUNCTION = "./tests/fixtures/functions-staticwebsite"
 
 
 @pytest.mark.parametrize(
