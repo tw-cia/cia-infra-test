@@ -6,8 +6,9 @@ AWS IAM `Role` plus one `RolePolicyAttachment` per entry in
 `spec.managedPolicyArns`.
 
 This replaces the inline `function-python` script previously embedded in
-`manifests/crossplane-compositions/composition-iamrole.yaml` -- the same
-logic now lives here as a standalone, testable, reusable Function package.
+`manifests/crossplane-compositions/custom-python/composition-iamrole-custom-python.yaml`
+-- the same logic now lives here as a standalone, testable, reusable
+Function package.
 
 ```shell
 # Run unit tests - see tests/test_fn.py
@@ -25,7 +26,7 @@ crossplane xpkg build -f package --embed-runtime-image=runtime
 
 After building, push the resulting `.xpkg` (or the runtime image, if
 pushing separately) to a registry, and point
-`manifests/crossplane-compositions/function-iamrole.yaml`'s `spec.package`
+`manifests/crossplane-compositions/custom-python/function-iamrole.yaml`'s `spec.package`
 at it.
 
 [functions]: https://docs.crossplane.io/latest/concepts/composition-functions

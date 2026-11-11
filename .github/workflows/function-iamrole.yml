@@ -27,7 +27,7 @@ env:
 
   # Shared across all three functions below. Each one's full registry path
   # is ghcr.io/tw-cia/cia-infra-test/function-<name>, matching spec.package
-  # in manifests/crossplane-compositions/function-<name>*.yaml.
+  # in manifests/crossplane-compositions/custom-python/function-<name>*.yaml.
   XPKG_VERSION: v0.1.${{ github.run_number }}
 
 jobs:

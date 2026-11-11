@@ -1,10 +1,8 @@
-// A fourth implementation of IAMRole, alongside Patch-and-Transform
-// (composition-iamrole-patch-and-transform.yaml), the custom-packaged
-// Python function (composition-iamrole.yaml), and the inline function-python
-// script authored as plain YAML (composition-iamrole-inline-python.yaml).
+// A third implementation of IAMRole, alongside Patch-and-Transform
+// (../yaml-patching/composition-iamrole-yaml-patching.yaml) and the
+// custom-packaged Python function (../custom-python/composition-iamrole-custom-python.yaml).
 //
-// This one is the same inline function-python approach, but the script
-// lives in its own file (scripts/iamrole.py) and is spliced in with
+// The script lives in its own file (scripts/iamrole.py) and is spliced in with
 // `importstr` at Argo CD sync time -- no manual YAML indentation, no
 // generated ConfigMap byproduct (contrast with the Kustomize approach),
 // since importstr produces a plain string value rather than text-templating

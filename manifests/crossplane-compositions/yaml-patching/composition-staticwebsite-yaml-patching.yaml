@@ -118,7 +118,7 @@ spec:
                   fromFieldPath: Required
 
           # Delegates to its own Composition (see
-          # composition-dnsvalidatedcertificate.yaml) -- gated on
+          # composition-dnsvalidatedcertificate-yaml-patching.yaml) -- gated on
           # spec.zone.name, since the custom domain is optional. Surfaces
           # just status.certificateArn back up, which is all the
           # distribution resource below needs.

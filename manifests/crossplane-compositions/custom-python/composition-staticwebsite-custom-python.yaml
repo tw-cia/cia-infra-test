@@ -1,4 +1,5 @@
-# A Python-function equivalent of composition-staticwebsite.yaml -- built to
+# A Python-function equivalent of
+# ../yaml-patching/composition-staticwebsite-yaml-patching.yaml -- built to
 # prove the two approaches produce identical output (see
 # functions/staticwebsite/) before relying on either one further.
 apiVersion: apiextensions.crossplane.io/v1

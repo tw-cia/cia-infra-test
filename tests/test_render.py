@@ -8,9 +8,9 @@ RENDER_COMMAND = [
     "crossplane",
     "composition",
     "render",
-    "manifests/laz-testing-crossplane/static-website-customdomain-example.yaml",
-    "./manifests/crossplane-compositions/composition-staticwebsite.yaml",
-    "./manifests/crossplane-compositions/function-patch-and-transform.yaml",
+    "tests/fixtures/static-website-customdomain-example.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/composition-staticwebsite-yaml-patching.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/function-patch-and-transform.yaml",
 ]
 
 # The ACM Certificate is no longer composed directly by StaticWebsite -- it's
@@ -23,8 +23,8 @@ CERTIFICATE_RENDER_COMMAND = [
     "composition",
     "render",
     "/dev/stdin",
-    "./manifests/crossplane-compositions/composition-dnsvalidatedcertificate.yaml",
-    "./manifests/crossplane-compositions/function-patch-and-transform.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/composition-dnsvalidatedcertificate-yaml-patching.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/function-patch-and-transform.yaml",
 ]
 
 
@@ -92,8 +92,8 @@ STATICWEBSITE_RENDER_COMMAND_OBSERVED = [
     "composition",
     "render",
     "tests/fixtures/staticwebsite-xr-observed.yaml",
-    "./manifests/crossplane-compositions/composition-staticwebsite.yaml",
-    "./manifests/crossplane-compositions/function-patch-and-transform.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/composition-staticwebsite-yaml-patching.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/function-patch-and-transform.yaml",
 ]
 
 
@@ -129,9 +129,9 @@ DNS_CERT_RENDER_COMMAND = [
     "crossplane",
     "composition",
     "render",
-    "manifests/laz-testing-crossplane/dns-validated-certificate-example.yaml",
-    "./manifests/crossplane-compositions/composition-dnsvalidatedcertificate.yaml",
-    "./manifests/crossplane-compositions/function-patch-and-transform.yaml",
+    "tests/fixtures/dns-validated-certificate-example.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/composition-dnsvalidatedcertificate-yaml-patching.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/function-patch-and-transform.yaml",
 ]
 
 DNS_CERT_RENDER_COMMAND_OBSERVED = [
@@ -142,8 +142,8 @@ DNS_CERT_RENDER_COMMAND_OBSERVED = [
     # reconcile -- see the fixture file's comment for why this is needed in
     # addition to --observed-resources.
     "tests/fixtures/dns-validated-certificate-xr-observed.yaml",
-    "./manifests/crossplane-compositions/composition-dnsvalidatedcertificate.yaml",
-    "./manifests/crossplane-compositions/function-patch-and-transform.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/composition-dnsvalidatedcertificate-yaml-patching.yaml",
+    "./manifests/crossplane-compositions/yaml-patching/function-patch-and-transform.yaml",
     "--observed-resources=tests/fixtures/dns-validated-certificate-observed.yaml",
 ]
 

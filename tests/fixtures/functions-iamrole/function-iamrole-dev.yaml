@@ -2,7 +2,8 @@
 # equivalence-test job, or build it yourself: `docker build
 # functions/iamrole --tag function-iamrole:dev`). Only used for the
 # equivalence tests in test_equivalence.py -- the real, deployed Function is
-# manifests/crossplane-compositions/function-iamrole.yaml, pointing at the
+# manifests/crossplane-compositions/custom-python/function-iamrole.yaml,
+# pointing at the
 # actual pushed registry image.
 apiVersion: pkg.crossplane.io/v1
 kind: Function

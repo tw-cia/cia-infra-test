@@ -1,6 +1,6 @@
 # A third implementation of IAMRole, alongside the custom-packaged Python
-# function (composition-iamrole.yaml) and the inline function-python script
-# (composition-iamrole-inline-python.yaml).
+# function (../custom-python/composition-iamrole-custom-python.yaml) and the
+# inline function-python script as Jsonnet (../inline-python/composition-iamrole-inline-python.jsonnet).
 #
 # One real limitation worth calling out: Patch-and-Transform has no way to
 # fan a variable-length array (spec.managedPolicyArns) out into a variable

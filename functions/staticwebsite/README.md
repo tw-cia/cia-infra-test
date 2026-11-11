@@ -1,7 +1,7 @@
 # function-staticwebsite
 
 A Python Crossplane composition function that replicates
-`manifests/crossplane-compositions/composition-staticwebsite.yaml` (a
+`manifests/crossplane-compositions/yaml-patching/composition-staticwebsite-yaml-patching.yaml` (a
 Patch-and-Transform Composition) resource-for-resource, including its
 known bug: `distribution`'s `viewerCertificate.acmCertificateArn` gate is
 unconditional, so a `StaticWebsite` with no custom `zone` can never actually

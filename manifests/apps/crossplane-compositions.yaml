@@ -9,6 +9,8 @@ spec:
     repoURL: https://github.com/tw-cia/cia-infra-test
     targetRevision: main
     path: manifests/crossplane-compositions
+    directory:
+      recurse: true
   destination:
     name: in-cluster
     namespace: crossplane-system
