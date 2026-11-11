@@ -1,27 +1,28 @@
-"""Proves that each of the six implementations we have per composite kind
-(yaml-patching, custom-python, inline-python, go-templating, kcl,
-externalized-kcl) produce equivalent output, across the reconcile-pass
-scenarios that actually differ (cold start, partially observed, fully
-observed, and -- for StaticWebsite -- the no-custom-domain case that
-currently triggers a known bug all implementations faithfully reproduce).
+"""Shared `crossplane composition render` harness for every test under
+tests/equivalence/ and tests/behaviour/ -- the six implementations we have
+per composite kind (yaml-patching, custom-python, inline-python,
+go-templating, kcl, externalized-kcl), and the one place a kind turns into
+a file path, a method name turns into a render() call, etc.
 
 Requires function-iamrole:dev, function-dnsvalidatedcertificate:dev, and
 function-staticwebsite:dev to already be built locally and loaded into the
 Docker daemon `crossplane composition render` talks to, and the `jsonnet`
-CLI to be on PATH -- see .github/workflows/function-iamrole.yml's
-equivalence-test job, or set this up yourself:
+CLI to be on PATH -- see .github/workflows/pipeline.yml's render-tests job,
+or set this up yourself:
 
     docker build functions/iamrole --tag function-iamrole:dev
     docker build functions/dnsvalidatedcertificate --tag function-dnsvalidatedcertificate:dev
     docker build functions/staticwebsite --tag function-staticwebsite:dev
     brew install jsonnet  # or your platform's equivalent
+
+This module has no test_* functions of its own, so pytest won't collect it
+directly.
 """
 
 import json
 import subprocess
 import tempfile
 
-import pytest
 import yaml
 
 IGNORE_METADATA_KEYS = {"name", "generateName", "uid", "ownerReferences", "labels", "resourceVersion"}
@@ -179,48 +180,3 @@ def render_all_methods(xr: str, kind: str, observed_resources: str | None = None
     """Renders the same XR through every method in METHODS for the given
     composite kind. Feed straight into assert_all_equivalent."""
     return {method: render_method(method, xr, kind, observed_resources) for method in METHODS}
-
-
-@pytest.mark.parametrize(
-    "xr,observed_resources",
-    [
-        ("tests/fixtures/iam-role-example.yaml", None),
-        (
-            "tests/fixtures/iam-role-example.yaml",
-            "tests/fixtures/iamrole-observed.yaml",
-        ),
-    ],
-    ids=["cold-start", "role-arn-observed"],
-)
-def test_iamrole_equivalence(xr, observed_resources):
-    assert_all_equivalent(render_all_methods(xr, "iamrole", observed_resources))
-
-
-@pytest.mark.parametrize(
-    "xr,observed_resources",
-    [
-        ("tests/fixtures/dns-validated-certificate-example.yaml", None),
-        (
-            "tests/fixtures/dns-validated-certificate-example.yaml",
-            "tests/fixtures/dns-validated-certificate-observed.yaml",
-        ),
-        ("tests/fixtures/dns-validated-certificate-xr-observed.yaml", None),
-    ],
-    ids=["cold-start", "first-observed", "status-already-recorded"],
-)
-def test_dns_validated_certificate_equivalence(xr, observed_resources):
-    assert_all_equivalent(render_all_methods(xr, "dnsvalidatedcertificate", observed_resources))
-
-
-@pytest.mark.parametrize(
-    "xr",
-    [
-        "tests/fixtures/static-website-customdomain-example.yaml",
-        "tests/fixtures/staticwebsite-xr-no-zone.yaml",
-        "tests/fixtures/staticwebsite-xr-partial-observed.yaml",
-        "tests/fixtures/staticwebsite-xr-fully-observed.yaml",
-    ],
-    ids=["cold-start", "no-custom-domain-bug", "certificate-not-yet-known", "fully-observed"],
-)
-def test_staticwebsite_equivalence(xr):
-    assert_all_equivalent(render_all_methods(xr, "staticwebsite"))

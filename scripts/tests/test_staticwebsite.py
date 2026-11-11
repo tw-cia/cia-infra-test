@@ -160,8 +160,8 @@ class TestCompose(unittest.TestCase):
         policy = resources["bucket-policy"]["resource"]["spec"]["forProvider"]["policy"]
         self.assertIn("arn:aws:cloudfront::123456789012:distribution/EDFDVBD6EXAMPLE", policy)
 
-    # Behaviour/CFR tests below -- mirror tests/test_staticwebsite_security.py
-    # and tests/test_staticwebsite_input_reflection.py (which exercise this
+    # Behaviour/CFR tests below -- mirror tests/behaviour/test_staticwebsite_security.py
+    # and tests/behaviour/test_staticwebsite_input_reflection.py (which exercise this
     # same logic, and the other four implementations, via `crossplane
     # composition render`), and functions/staticwebsite/tests/test_fn.py
     # (the custom-packaged function's version of the same tests).

@@ -7,7 +7,7 @@ known bug: `distribution`'s `viewerCertificate.acmCertificateArn` gate is
 unconditional, so a `StaticWebsite` with no custom `zone` can never actually
 get a `Distribution`. This is intentional for now -- the point of this
 function is to prove equivalence with the YAML version before fixing it.
-See `tests/test_render.py` at the repo root for the comparison.
+See `tests/behaviour/test_render.py` at the repo root for the comparison.
 
 ```shell
 uv run pytest

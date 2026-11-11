@@ -157,7 +157,7 @@ class TestCompose(unittest.TestCase):
         )
 
     def test_certificate_validation_waits_on_the_record_it_created(self) -> None:
-        # Mirrors tests/test_dnsvalidatedcertificate_consistency.py -- not
+        # Mirrors tests/behaviour/test_dnsvalidatedcertificate_consistency.py -- not
         # that each resource independently matches a hardcoded value (the
         # test above already covers that), but that CertificateValidation is
         # actually waiting on the exact FQDN the Record resource publishes,

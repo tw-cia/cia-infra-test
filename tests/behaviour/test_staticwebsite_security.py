@@ -1,18 +1,18 @@
 """Proves security-relevant properties of the rendered StaticWebsite
 resources themselves, for every implementation -- not that the
-implementations agree with each other (that's test_equivalence.py), but that
+implementations agree with each other (that's tests/equivalence/test_equivalence.py), but that
 what they produce is actually what we intend to run: the bucket has no
 public access, and the only thing allowed to read it is this bucket's own
 CloudFront distribution.
 
-Shares test_equivalence.py's render harness (same requirements: the three
+Shares tests/harness.py's render harness (same requirements: the three
 function-*:dev images built locally, and the `jsonnet` CLI on PATH -- see
 that file's docstring for the exact commands).
 """
 
 import pytest
 
-from test_equivalence import METHODS, find_one, render_method
+from harness import METHODS, find_one, render_method
 
 
 # Matches tests/fixtures/staticwebsite-xr-fully-observed.yaml's spec/status --

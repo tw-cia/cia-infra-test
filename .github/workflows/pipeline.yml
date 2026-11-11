@@ -35,7 +35,12 @@ env:
   XPKG_VERSION: v0.1.${{ github.run_number }}
 
 jobs:
-  unit-test:
+  # Each of these runs one implementation's own fast local tests, no Docker
+  # or crossplane render needed -- the three methods whose logic is
+  # externalized into its own testable module rather than living entirely
+  # inline in a Composition file. yaml-patching, go-templating, and kcl have
+  # no equivalent job: their logic is only exercised via render-tests below.
+  custom-python:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,16 +49,11 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v10.0.0
 
-      - name: Run unit tests
+      - name: Run tests
         working-directory: functions
         run: uv run pytest */tests -v
 
-  # Runs in parallel with the others -- unit tests for the externalized
-  # inline-python scripts (scripts/*.py), the compose(req, rsp) functions the
-  # inline-python method's Jsonnet Compositions splice in via importstr.
-  # Doesn't need Docker, Crossplane, or Jsonnet, just the scripts/ uv project
-  # itself.
-  scripts-test:
+  inline-python:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -62,16 +62,11 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v10.0.0
 
-      - name: Run scripts tests
+      - name: Run tests
         working-directory: scripts
         run: uv run pytest tests -v
 
-  # Runs in parallel with the others -- unit tests for the externalized KCL
-  # compose lambdas (kcl-scripts/*.k), the composeStaticWebsite(oxr, ocds) /
-  # composeCertificate(oxr, ocds) functions the externalized-kcl method's
-  # Jsonnet Compositions splice in via importstr. Doesn't need Docker,
-  # Crossplane, or Jsonnet, just the kcl CLI's own test runner.
-  kcl-scripts-test:
+  externalized-kcl:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -80,18 +75,19 @@ jobs:
       - name: Setup the KCL CLI
         run: curl -fsSL https://kcl-lang.io/script/install-cli.sh | bash
 
-      - name: Run kcl-scripts tests
+      - name: Run tests
         working-directory: kcl-scripts
         run: kcl test ./...
 
-  # Runs in parallel with `unit-test`, not after it -- this exercises the
-  # Compositions directly via `crossplane composition render`: equivalence
-  # across all five implementations per composite kind (test_equivalence.py),
-  # plus the render-based correctness/security/consistency/input-reflection
-  # tests layered on top of that same harness. Everything under ./tests/ is
-  # unrelated to the function-iamrole package `unit-test` builds/tests/pushes
-  # below.
-  composition-tests:
+  # Runs in parallel with the jobs above, not after them -- this exercises
+  # every method's Composition directly via `crossplane composition render`.
+  # tests/equivalence and tests/behaviour are two directories, not two
+  # pytest invocations picking out individual files: equivalence proves the
+  # six implementations per composite kind agree with each other; behaviour
+  # proves what they produce is actually correct and secure, independent of
+  # that agreement. See tests/harness.py's docstring for what this shares
+  # with the three jobs above.
+  render-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -117,11 +113,14 @@ jobs:
           docker build functions/dnsvalidatedcertificate --tag function-dnsvalidatedcertificate:dev
           docker build functions/staticwebsite --tag function-staticwebsite:dev
 
-      - name: Run composition tests
-        run: uv run pytest -vv ./tests/
+      - name: Run equivalence tests
+        run: uv run pytest -vv tests/equivalence
+
+      - name: Run behaviour tests
+        run: uv run pytest -vv tests/behaviour
 
   build-iamrole:
-    needs: [unit-test, composition-tests, scripts-test, kcl-scripts-test]
+    needs: [custom-python, render-tests, inline-python, externalized-kcl]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -159,7 +158,7 @@ jobs:
           retention-days: 1
 
   build-staticwebsite:
-    needs: [unit-test, composition-tests, scripts-test, kcl-scripts-test]
+    needs: [custom-python, render-tests, inline-python, externalized-kcl]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -197,7 +196,7 @@ jobs:
           retention-days: 1
 
   build-dnsvalidatedcertificate:
-    needs: [unit-test, composition-tests, scripts-test, kcl-scripts-test]
+    needs: [custom-python, render-tests, inline-python, externalized-kcl]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

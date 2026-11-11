@@ -1,6 +1,6 @@
 """Proves that specific spec fields actually reach the specific output
 fields they're supposed to, for every implementation -- not that the five
-methods agree with each other (test_equivalence.py), and not that a fixed
+methods agree with each other (tests/equivalence/test_equivalence.py), and not that a fixed
 set of outputs is secure (test_staticwebsite_security.py), but that
 ever-changing input to this specific resource field actually happens. If all
 five methods shared the same bug (e.g. silently ignoring spec.indexDocument
@@ -11,13 +11,13 @@ secure, output.
 tests/fixtures/staticwebsite-xr-input-reflection.yaml uses values not shared
 with any other fixture, so a passing assertion here can't be coincidence.
 
-Shares test_equivalence.py's render harness (same requirements -- see that
+Shares tests/harness.py's render harness (same requirements -- see that
 file's docstring).
 """
 
 import pytest
 
-from test_equivalence import METHODS, find_one, render_method
+from harness import METHODS, find_one, render_method
 
 XR = "tests/fixtures/staticwebsite-xr-input-reflection.yaml"
 

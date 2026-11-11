@@ -12,3 +12,9 @@ dev = [
     "pytest>=9.2.0",
     "pyyaml>=6.0.3",
 ]
+
+[tool.pytest.ini_options]
+# So `from harness import ...` resolves from tests/equivalence/ and
+# tests/behaviour/ without needing __init__.py files -- tests/harness.py is
+# a bare top-level module, not an installable package.
+pythonpath = ["tests"]

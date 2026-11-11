@@ -1,6 +1,6 @@
 """Behaviour and cross-functional-requirement tests for the custom-packaged
-staticwebsite function, mirroring tests/test_staticwebsite_security.py and
-tests/test_staticwebsite_input_reflection.py (which exercise this same logic,
+staticwebsite function, mirroring tests/behaviour/test_staticwebsite_security.py and
+tests/behaviour/test_staticwebsite_input_reflection.py (which exercise this same logic,
 and the other four implementations, via `crossplane composition render`).
 These run directly against fn.py instead -- no Docker, no render -- so they
 double as a fast local feedback loop for this one implementation.
