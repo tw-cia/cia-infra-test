@@ -162,6 +162,42 @@ class TestFunctionRunner(unittest.IsolatedAsyncioTestCase):
             ["_acmvalidation.static.trololo.demotw.com."],
         )
 
+    async def test_certificate_validation_waits_on_the_record_it_created(self) -> None:
+        # Mirrors tests/test_dnsvalidatedcertificate_consistency.py -- not
+        # that each resource independently matches a hardcoded value (the
+        # test above already covers that), but that CertificateValidation is
+        # actually waiting on the exact FQDN the Record resource publishes,
+        # not just a coincidentally-equal literal.
+        req = fnv1.RunFunctionRequest(
+            observed=fnv1.State(
+                composite=fnv1.Resource(
+                    resource=resource.dict_to_struct(
+                        {
+                            "apiVersion": "platform.cia-infra-test.io/v1alpha1",
+                            "kind": "DnsValidatedCertificate",
+                            "spec": BASE_SPEC,
+                            "status": {
+                                "certificateArn": "arn:aws:acm:us-east-1:123456789012:certificate/mock-certificate-id",
+                                "certValidationRecordName": "_acmvalidation.static.trololo.demotw.com.",
+                                "certValidationRecordValue": "validate.acm-validations.aws.",
+                            },
+                        }
+                    ),
+                ),
+            ),
+        )
+
+        got = await self.run_function(req)
+
+        record = got["desired"]["resources"]["cert-validation-record"]["resource"]["spec"]["forProvider"]
+        validation = got["desired"]["resources"]["certificate-validation"]["resource"]["spec"]["forProvider"]
+
+        self.assertEqual(
+            validation["validationRecordFqdns"],
+            [record["name"]],
+            "CertificateValidation is waiting on a different FQDN than the Record it's supposed to validate against",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
