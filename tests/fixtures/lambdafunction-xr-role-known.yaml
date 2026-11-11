@@ -1,0 +1,24 @@
+# One reconcile pass after lambda-function-example.yaml's cold start: the
+# nested IAMRole XR has reported back its roleArn, now persisted on this
+# composite's own status -- so the Function resource can render.
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: LambdaFunction
+metadata:
+  name: laz-lambda-function-role-known-example
+  namespace: laz-testing-crossplane
+spec:
+  functionName: laz-lambda-example
+  runtime: python3.12
+  handler: index.handler
+  description: Example Lambda function created via Crossplane
+  code:
+    s3Bucket: laz-lambda-artifacts
+    s3Key: example/function.zip
+  memorySize: 256
+  timeoutSeconds: 15
+  environmentVariables:
+    LOG_LEVEL: debug
+  managedPolicyArns:
+    - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+status:
+  roleArn: arn:aws:iam::123456789012:role/laz-lambda-example-role

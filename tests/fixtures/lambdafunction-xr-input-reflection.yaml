@@ -1,0 +1,26 @@
+# Deliberately distinct values (not shared with any other fixture) so a
+# passing assertion actually proves these values flowed from spec to the
+# rendered resource, rather than coincidentally matching another fixture's
+# constants. status.roleArn is set so the Function renders (gated on that),
+# but functionArn is left unset so FunctionUrl doesn't -- this fixture is
+# only for input-reflection checks, not the function-url assertions other
+# fixtures cover.
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: LambdaFunction
+metadata:
+  name: laz-lambda-function-input-reflection-example
+  namespace: laz-testing-crossplane
+spec:
+  functionName: reflection-test-function
+  runtime: nodejs20.x
+  handler: handler.main
+  description: Reflection test function
+  code:
+    s3Bucket: reflection-test-artifacts
+    s3Key: reflection/function.zip
+  memorySize: 512
+  timeoutSeconds: 30
+  environmentVariables:
+    STAGE: reflection
+status:
+  roleArn: arn:aws:iam::999999999999:role/reflection-test-function-role
