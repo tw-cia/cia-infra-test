@@ -1,9 +1,9 @@
-"""Proves that each of the five implementations we have per composite kind
-(yaml-patching, custom-python, inline-python, go-templating, kcl) produce equivalent output,
-across the reconcile-pass scenarios that actually differ (cold start,
-partially observed, fully observed, and -- for StaticWebsite -- the
-no-custom-domain case that currently triggers a known bug all
-implementations faithfully reproduce).
+"""Proves that each of the six implementations we have per composite kind
+(yaml-patching, custom-python, inline-python, go-templating, kcl,
+externalized-kcl) produce equivalent output, across the reconcile-pass
+scenarios that actually differ (cold start, partially observed, fully
+observed, and -- for StaticWebsite -- the no-custom-domain case that
+currently triggers a known bug all implementations faithfully reproduce).
 
 Requires function-iamrole:dev, function-dnsvalidatedcertificate:dev, and
 function-staticwebsite:dev to already be built locally and loaded into the
@@ -144,12 +144,7 @@ def composition_path(method_dir: str, kind: str, ext: str = "yaml") -> str:
 # stable order -- the one place to add a new method later. Other test
 # modules parametrize over this list to get one test case per method instead
 # of looping inside a single test.
-METHODS = ["yaml-patching", "custom-python", "inline-python", "go-templating", "kcl"]
-
-# externalized-kcl only implements StaticWebsite and DnsValidatedCertificate
-# -- IAMRole is deliberately skipped pending a future redesign of that
-# composite kind (see test_iamrole_equivalence, which stays on METHODS).
-METHODS_EXCLUDING_IAMROLE = METHODS + ["externalized-kcl"]
+METHODS = ["yaml-patching", "custom-python", "inline-python", "go-templating", "kcl", "externalized-kcl"]
 
 
 def render_method(method: str, xr: str, kind: str, observed_resources: str | None = None) -> list[dict]:
@@ -180,11 +175,10 @@ def render_method(method: str, xr: str, kind: str, observed_resources: str | Non
     raise ValueError(f"unknown method: {method}")
 
 
-def render_all_methods(xr: str, kind: str, observed_resources: str | None = None, methods: list[str] = METHODS) -> dict:
-    """Renders the same XR through every method in `methods` (defaulting to
-    METHODS) for the given composite kind. Feed straight into
-    assert_all_equivalent."""
-    return {method: render_method(method, xr, kind, observed_resources) for method in methods}
+def render_all_methods(xr: str, kind: str, observed_resources: str | None = None) -> dict:
+    """Renders the same XR through every method in METHODS for the given
+    composite kind. Feed straight into assert_all_equivalent."""
+    return {method: render_method(method, xr, kind, observed_resources) for method in METHODS}
 
 
 @pytest.mark.parametrize(
@@ -215,9 +209,7 @@ def test_iamrole_equivalence(xr, observed_resources):
     ids=["cold-start", "first-observed", "status-already-recorded"],
 )
 def test_dns_validated_certificate_equivalence(xr, observed_resources):
-    assert_all_equivalent(
-        render_all_methods(xr, "dnsvalidatedcertificate", observed_resources, methods=METHODS_EXCLUDING_IAMROLE)
-    )
+    assert_all_equivalent(render_all_methods(xr, "dnsvalidatedcertificate", observed_resources))
 
 
 @pytest.mark.parametrize(
@@ -231,4 +223,4 @@ def test_dns_validated_certificate_equivalence(xr, observed_resources):
     ids=["cold-start", "no-custom-domain-bug", "certificate-not-yet-known", "fully-observed"],
 )
 def test_staticwebsite_equivalence(xr):
-    assert_all_equivalent(render_all_methods(xr, "staticwebsite", methods=METHODS_EXCLUDING_IAMROLE))
+    assert_all_equivalent(render_all_methods(xr, "staticwebsite"))

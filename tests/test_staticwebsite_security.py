@@ -12,7 +12,7 @@ that file's docstring for the exact commands).
 
 import pytest
 
-from test_equivalence import METHODS_EXCLUDING_IAMROLE, find_one, render_method
+from test_equivalence import METHODS, find_one, render_method
 
 
 # Matches tests/fixtures/staticwebsite-xr-fully-observed.yaml's spec/status --
@@ -24,7 +24,7 @@ FULLY_OBSERVED_ZONE_NAME = "static.trololo.demotw.com"
 FULLY_OBSERVED_CERTIFICATE_ARN = "arn:aws:acm:us-east-1:123456789012:certificate/mock-certificate-id"
 
 
-@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
+@pytest.mark.parametrize("method", METHODS)
 def test_staticwebsite_bucket_policy_grants_cloudfront_only(method):
     """The bucket policy that lets CloudFront read the bucket should grant
     nothing else: one statement, scoped to the cloudfront.amazonaws.com
@@ -54,7 +54,7 @@ def test_staticwebsite_bucket_policy_grants_cloudfront_only(method):
     )
 
 
-@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
+@pytest.mark.parametrize("method", METHODS)
 def test_staticwebsite_bucket_policy_grants_get_object_only(method):
     """The one thing CloudFront is allowed to do to the bucket is read
     objects -- not write, delete, list, or anything else."""
@@ -66,7 +66,7 @@ def test_staticwebsite_bucket_policy_grants_get_object_only(method):
     assert actions == ["s3:GetObject"], f"granted actions beyond GetObject: {actions}"
 
 
-@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
+@pytest.mark.parametrize("method", METHODS)
 def test_staticwebsite_requests_certificate_for_the_custom_domain(method):
     """Setting a custom domain should request an ACM certificate for that
     exact domain, via the nested DnsValidatedCertificate composite -- and
@@ -83,7 +83,7 @@ def test_staticwebsite_requests_certificate_for_the_custom_domain(method):
     assert "cloudfrontDefaultCertificate" not in viewer_certificate
 
 
-@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
+@pytest.mark.parametrize("method", METHODS)
 def test_staticwebsite_distribution_enforces_tls_1_2_minimum(method):
     """TLSv1.2_2021 is AWS's enum for "TLS 1.2 minimum, 2021 cipher suite
     set" on a custom-domain viewer certificate -- anything weaker (TLSv1,
@@ -95,7 +95,7 @@ def test_staticwebsite_distribution_enforces_tls_1_2_minimum(method):
     assert viewer_certificate["minimumProtocolVersion"] == "TLSv1.2_2021"
 
 
-@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
+@pytest.mark.parametrize("method", METHODS)
 @pytest.mark.parametrize(
     "xr",
     [
@@ -115,7 +115,7 @@ def test_staticwebsite_blocks_all_public_access(xr, method):
         assert block[flag] is True, f"{flag} is not True"
 
 
-@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
+@pytest.mark.parametrize("method", METHODS)
 @pytest.mark.parametrize(
     "xr",
     [
@@ -143,7 +143,7 @@ def test_staticwebsite_public_access_block_targets_the_right_bucket(xr, method):
     assert block["region"] == bucket_region
 
 
-@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
+@pytest.mark.parametrize("method", METHODS)
 @pytest.mark.parametrize(
     "xr",
     [
@@ -167,7 +167,7 @@ def test_staticwebsite_origin_access_control_is_configured_correctly(xr, method)
     assert oac["signingProtocol"] == "sigv4"
 
 
-@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
+@pytest.mark.parametrize("method", METHODS)
 def test_staticwebsite_distribution_selects_its_own_origin_access_control(method):
     """Not just "an OAC exists and is configured correctly" -- the
     Distribution has to actually select *this* OAC. matchControllerRef scopes
