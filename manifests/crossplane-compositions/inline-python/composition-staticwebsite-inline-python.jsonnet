@@ -6,6 +6,7 @@
   kind: "Composition",
   metadata: {
     name: "staticwebsite-inline-python",
+    labels: { method: "inline-python" },
   },
   spec: {
     compositeTypeRef: {

@@ -9,6 +9,8 @@ apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
   name: staticwebsite-yaml-patching
+  labels:
+    method: yaml-patching
 spec:
   compositeTypeRef:
     apiVersion: platform.cia-infra-test.io/v1alpha1

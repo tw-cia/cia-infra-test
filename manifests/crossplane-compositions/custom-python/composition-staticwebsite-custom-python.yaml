@@ -6,6 +6,8 @@ apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
   name: staticwebsite-custom-python
+  labels:
+    method: custom-python
 spec:
   compositeTypeRef:
     apiVersion: platform.cia-infra-test.io/v1alpha1

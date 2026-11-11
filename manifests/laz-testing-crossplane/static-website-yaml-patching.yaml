@@ -1,0 +1,16 @@
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: StaticWebsite
+metadata:
+  name: laz-static-website-yaml-patching
+  namespace: laz-testing-crossplane
+spec:
+  crossplane:
+    compositionSelector:
+      matchLabels:
+        method: yaml-patching
+  bucket:
+    name: laz-static-website-yaml-patching-demo
+    region: ap-southeast-1
+  zone:
+    name: static-yaml-patching.trololo.demotw.com
+    id: Z00921083AT1Z6WZY8LYW
