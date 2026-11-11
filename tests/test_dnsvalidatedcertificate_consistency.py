@@ -12,10 +12,10 @@ file's docstring).
 
 import pytest
 
-from test_equivalence import METHODS, find_one, render_method
+from test_equivalence import METHODS_EXCLUDING_IAMROLE, find_one, render_method
 
 
-@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
 def test_dnsvalidatedcertificate_validation_waits_on_the_record_it_created(method):
     # The only scenario where both the validation Record and the
     # CertificateValidation resource render at once.

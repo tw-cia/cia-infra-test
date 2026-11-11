@@ -111,6 +111,7 @@ INLINE_PYTHON = "./manifests/crossplane-compositions/inline-python"
 CUSTOM_PYTHON = "./manifests/crossplane-compositions/custom-python"
 GO_TEMPLATING = "./manifests/crossplane-compositions/go-templating"
 KCL = "./manifests/crossplane-compositions/kcl"
+EXTERNALIZED_KCL = "./manifests/crossplane-compositions/externalized-kcl"
 
 # Patch-and-Transform doesn't need function-auto-ready -- it has built-in
 # auto-ready detection. Every custom/inline-python/go-templating/kcl
@@ -139,10 +140,16 @@ def composition_path(method_dir: str, kind: str, ext: str = "yaml") -> str:
     return f"{method_dir}/composition-{kind}-{method}.{ext}"
 
 
-# Every method this repo implements, in a stable order -- the one place to
-# add a sixth method later. Other test modules parametrize over this list to
-# get one test case per method instead of looping inside a single test.
+# Every method this repo implements for all three composite kinds, in a
+# stable order -- the one place to add a new method later. Other test
+# modules parametrize over this list to get one test case per method instead
+# of looping inside a single test.
 METHODS = ["yaml-patching", "custom-python", "inline-python", "go-templating", "kcl"]
+
+# externalized-kcl only implements StaticWebsite and DnsValidatedCertificate
+# -- IAMRole is deliberately skipped pending a future redesign of that
+# composite kind (see test_iamrole_equivalence, which stays on METHODS).
+METHODS_EXCLUDING_IAMROLE = METHODS + ["externalized-kcl"]
 
 
 def render_method(method: str, xr: str, kind: str, observed_resources: str | None = None) -> list[dict]:
@@ -163,13 +170,21 @@ def render_method(method: str, xr: str, kind: str, observed_resources: str | Non
         return render(xr, composition_path(GO_TEMPLATING, kind), FUNCTION_GO_TEMPLATING, observed_resources)
     if method == "kcl":
         return render(xr, composition_path(KCL, kind), FUNCTION_KCL, observed_resources)
+    if method == "externalized-kcl":
+        return render(
+            xr,
+            evaluate_jsonnet(composition_path(EXTERNALIZED_KCL, kind, ext="jsonnet")),
+            FUNCTION_KCL,
+            observed_resources,
+        )
     raise ValueError(f"unknown method: {method}")
 
 
-def render_all_methods(xr: str, kind: str, observed_resources: str | None = None) -> dict:
-    """Renders the same XR through every method in METHODS for the given
-    composite kind. Feed straight into assert_all_equivalent."""
-    return {method: render_method(method, xr, kind, observed_resources) for method in METHODS}
+def render_all_methods(xr: str, kind: str, observed_resources: str | None = None, methods: list[str] = METHODS) -> dict:
+    """Renders the same XR through every method in `methods` (defaulting to
+    METHODS) for the given composite kind. Feed straight into
+    assert_all_equivalent."""
+    return {method: render_method(method, xr, kind, observed_resources) for method in methods}
 
 
 @pytest.mark.parametrize(
@@ -200,7 +215,9 @@ def test_iamrole_equivalence(xr, observed_resources):
     ids=["cold-start", "first-observed", "status-already-recorded"],
 )
 def test_dns_validated_certificate_equivalence(xr, observed_resources):
-    assert_all_equivalent(render_all_methods(xr, "dnsvalidatedcertificate", observed_resources))
+    assert_all_equivalent(
+        render_all_methods(xr, "dnsvalidatedcertificate", observed_resources, methods=METHODS_EXCLUDING_IAMROLE)
+    )
 
 
 @pytest.mark.parametrize(
@@ -214,4 +231,4 @@ def test_dns_validated_certificate_equivalence(xr, observed_resources):
     ids=["cold-start", "no-custom-domain-bug", "certificate-not-yet-known", "fully-observed"],
 )
 def test_staticwebsite_equivalence(xr):
-    assert_all_equivalent(render_all_methods(xr, "staticwebsite"))
+    assert_all_equivalent(render_all_methods(xr, "staticwebsite", methods=METHODS_EXCLUDING_IAMROLE))

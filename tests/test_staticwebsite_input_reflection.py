@@ -17,12 +17,12 @@ file's docstring).
 
 import pytest
 
-from test_equivalence import METHODS, find_one, render_method
+from test_equivalence import METHODS_EXCLUDING_IAMROLE, find_one, render_method
 
 XR = "tests/fixtures/staticwebsite-xr-input-reflection.yaml"
 
 
-@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
 def test_staticwebsite_bucket_reflects_name_and_region(method):
     docs = render_method(method, XR, "staticwebsite")
     bucket = find_one(docs, "Bucket")
@@ -30,14 +30,14 @@ def test_staticwebsite_bucket_reflects_name_and_region(method):
     assert bucket["spec"]["forProvider"]["region"] == "eu-west-2"
 
 
-@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
 def test_staticwebsite_distribution_reflects_index_document(method):
     docs = render_method(method, XR, "staticwebsite")
     distribution = find_one(docs, "Distribution")["spec"]["forProvider"]
     assert distribution["defaultRootObject"] == "home.html"
 
 
-@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("method", METHODS_EXCLUDING_IAMROLE)
 def test_staticwebsite_distribution_reflects_custom_domain_alias(method):
     docs = render_method(method, XR, "staticwebsite")
     distribution = find_one(docs, "Distribution")["spec"]["forProvider"]

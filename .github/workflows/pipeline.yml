@@ -8,6 +8,7 @@ on:
       - functions/**
       - manifests/crossplane-compositions/**
       - scripts/**
+      - kcl-scripts/**
       - tests/**
       - .github/workflows/pipeline.yml
   pull_request:
@@ -15,6 +16,7 @@ on:
       - functions/**
       - manifests/crossplane-compositions/**
       - scripts/**
+      - kcl-scripts/**
       - tests/**
       - .github/workflows/pipeline.yml
   workflow_dispatch: {}
@@ -64,6 +66,24 @@ jobs:
         working-directory: scripts
         run: uv run pytest tests -v
 
+  # Runs in parallel with the others -- unit tests for the externalized KCL
+  # compose lambdas (kcl-scripts/*.k), the composeStaticWebsite(oxr, ocds) /
+  # composeCertificate(oxr, ocds) functions the externalized-kcl method's
+  # Jsonnet Compositions splice in via importstr. Doesn't need Docker,
+  # Crossplane, or Jsonnet, just the kcl CLI's own test runner.
+  kcl-scripts-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup the KCL CLI
+        run: curl -fsSL https://kcl-lang.io/script/install-cli.sh | bash
+
+      - name: Run kcl-scripts tests
+        working-directory: kcl-scripts
+        run: kcl test ./...
+
   # Runs in parallel with `unit-test`, not after it -- this exercises the
   # Compositions directly via `crossplane composition render`: equivalence
   # across all five implementations per composite kind (test_equivalence.py),
@@ -101,7 +121,7 @@ jobs:
         run: uv run pytest -vv ./tests/
 
   build-iamrole:
-    needs: [unit-test, composition-tests, scripts-test]
+    needs: [unit-test, composition-tests, scripts-test, kcl-scripts-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -139,7 +159,7 @@ jobs:
           retention-days: 1
 
   build-staticwebsite:
-    needs: [unit-test, composition-tests, scripts-test]
+    needs: [unit-test, composition-tests, scripts-test, kcl-scripts-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -177,7 +197,7 @@ jobs:
           retention-days: 1
 
   build-dnsvalidatedcertificate:
-    needs: [unit-test, composition-tests, scripts-test]
+    needs: [unit-test, composition-tests, scripts-test, kcl-scripts-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
