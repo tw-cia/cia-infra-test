@@ -1,0 +1,23 @@
+# Deliberately distinct values (not shared with any other fixture) so a
+# passing assertion actually proves this value flowed from spec to the
+# rendered resource, rather than coincidentally matching some other
+# fixture's constant. status.bucketDomainName/certificateArn are set so the
+# Distribution renders (gated on both), but distributionArn is left unset so
+# BucketPolicy doesn't -- this fixture is only for input-reflection checks,
+# not the bucket-policy/security assertions other fixtures cover.
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: StaticWebsite
+metadata:
+  name: laz-static-website-input-reflection-example
+  namespace: laz-testing-crossplane
+spec:
+  bucket:
+    name: reflection-test-bucket
+    region: eu-west-2
+  zone:
+    name: reflection.example.com
+    id: ZDISTINCTZONEID123
+  indexDocument: home.html
+status:
+  bucketDomainName: reflection-test-bucket.s3.eu-west-2.amazonaws.com
+  certificateArn: arn:aws:acm:us-east-1:999999999999:certificate/reflection-test-cert

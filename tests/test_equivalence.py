@@ -63,6 +63,15 @@ def normalize(doc):
     return {k: _parse_json_strings(v) for k, v in doc.items()}
 
 
+def find_one(docs: list[dict], kind: str) -> dict:
+    """Finds the single resource of the given kind in a render's docs. Fails
+    loudly if there isn't exactly one -- used by tests that assert against a
+    known, unambiguous resource rather than comparing whole renders."""
+    matches = [d for d in docs if d.get("kind") == kind]
+    assert len(matches) == 1, f"expected exactly one {kind}, found {len(matches)}: {matches}"
+    return matches[0]
+
+
 def render(xr_path, composition_path, function_path, observed_resources=None):
     cmd = ["crossplane", "composition", "render", xr_path, composition_path, function_path]
     if observed_resources:
@@ -130,27 +139,37 @@ def composition_path(method_dir: str, kind: str, ext: str = "yaml") -> str:
     return f"{method_dir}/composition-{kind}-{method}.{ext}"
 
 
-def render_all_methods(xr: str, kind: str, observed_resources: str | None = None) -> dict:
-    """Renders the same XR through all five method directories for the
-    given composite kind. Feed straight into assert_all_equivalent."""
-    return {
-        "yaml-patching": render(
-            xr, composition_path(YAML_PATCHING, kind), PATCH_AND_TRANSFORM, observed_resources
-        ),
-        "custom-python": render(
-            xr, composition_path(CUSTOM_PYTHON, kind), CUSTOM_PYTHON_FUNCTIONS[kind], observed_resources
-        ),
-        "inline-python": render(
+# Every method this repo implements, in a stable order -- the one place to
+# add a sixth method later. Other test modules parametrize over this list to
+# get one test case per method instead of looping inside a single test.
+METHODS = ["yaml-patching", "custom-python", "inline-python", "go-templating", "kcl"]
+
+
+def render_method(method: str, xr: str, kind: str, observed_resources: str | None = None) -> list[dict]:
+    """Renders the given XR through exactly one named method (one of
+    METHODS) for the given composite kind."""
+    if method == "yaml-patching":
+        return render(xr, composition_path(YAML_PATCHING, kind), PATCH_AND_TRANSFORM, observed_resources)
+    if method == "custom-python":
+        return render(xr, composition_path(CUSTOM_PYTHON, kind), CUSTOM_PYTHON_FUNCTIONS[kind], observed_resources)
+    if method == "inline-python":
+        return render(
             xr,
             evaluate_jsonnet(composition_path(INLINE_PYTHON, kind, ext="jsonnet")),
             FUNCTION_PYTHON,
             observed_resources,
-        ),
-        "go-templating": render(
-            xr, composition_path(GO_TEMPLATING, kind), FUNCTION_GO_TEMPLATING, observed_resources
-        ),
-        "kcl": render(xr, composition_path(KCL, kind), FUNCTION_KCL, observed_resources),
-    }
+        )
+    if method == "go-templating":
+        return render(xr, composition_path(GO_TEMPLATING, kind), FUNCTION_GO_TEMPLATING, observed_resources)
+    if method == "kcl":
+        return render(xr, composition_path(KCL, kind), FUNCTION_KCL, observed_resources)
+    raise ValueError(f"unknown method: {method}")
+
+
+def render_all_methods(xr: str, kind: str, observed_resources: str | None = None) -> dict:
+    """Renders the same XR through every method in METHODS for the given
+    composite kind. Feed straight into assert_all_equivalent."""
+    return {method: render_method(method, xr, kind, observed_resources) for method in METHODS}
 
 
 @pytest.mark.parametrize(
