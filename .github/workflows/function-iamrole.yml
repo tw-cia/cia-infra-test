@@ -7,12 +7,14 @@ on:
     paths:
       - functions/**
       - manifests/crossplane-compositions/**
+      - scripts/**
       - tests/**
       - .github/workflows/function-iamrole.yml
   pull_request:
     paths:
       - functions/**
       - manifests/crossplane-compositions/**
+      - scripts/**
       - tests/**
       - .github/workflows/function-iamrole.yml
   workflow_dispatch: {}
@@ -43,6 +45,24 @@ jobs:
       - name: Run unit tests
         working-directory: functions
         run: uv run pytest */tests -v
+
+  # Runs in parallel with the others -- unit tests for the externalized
+  # inline-python scripts (scripts/*.py), the compose(req, rsp) functions the
+  # inline-python method's Jsonnet Compositions splice in via importstr.
+  # Doesn't need Docker, Crossplane, or Jsonnet, just the scripts/ uv project
+  # itself.
+  scripts-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v10.0.0
+
+      - name: Run scripts tests
+        working-directory: scripts
+        run: uv run pytest tests -v
 
   # Runs in parallel with `unit-test`, not after it -- this exercises the
   # Compositions directly via `crossplane composition render`: equivalence
@@ -81,7 +101,7 @@ jobs:
         run: uv run pytest -vv ./tests/
 
   build-iamrole:
-    needs: [unit-test, composition-tests]
+    needs: [unit-test, composition-tests, scripts-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -119,7 +139,7 @@ jobs:
           retention-days: 1
 
   build-staticwebsite:
-    needs: [unit-test, composition-tests]
+    needs: [unit-test, composition-tests, scripts-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -157,7 +177,7 @@ jobs:
           retention-days: 1
 
   build-dnsvalidatedcertificate:
-    needs: [unit-test, composition-tests]
+    needs: [unit-test, composition-tests, scripts-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
