@@ -1,0 +1,18 @@
+# Deliberately distinct values (not shared with any other fixture) so a
+# passing assertion actually proves these values flowed from spec to the
+# rendered resource, rather than coincidentally matching iam-role-example.yaml's
+# constants. Two managedPolicyArns -- iam-role-example.yaml only ever
+# exercises the policy-attachment fan-out at n=1, which can't distinguish
+# "handles a list" from "handles exactly one element".
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: IAMRole
+metadata:
+  name: laz-iam-role-multiple-policies-example
+  namespace: laz-testing-crossplane
+spec:
+  roleName: reflection-test-role
+  description: Role with more than one managed policy attached
+  trustedService: ec2.amazonaws.com
+  managedPolicyArns:
+    - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+    - arn:aws:iam::aws:policy/AmazonSNSReadOnlyAccess

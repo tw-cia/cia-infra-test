@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["iamrole", "staticwebsite", "dnsvalidatedcertificate"]
+members = ["iamrole", "staticwebsite", "dnsvalidatedcertificate", "lambdafunction"]
 
 [tool.pytest.ini_options]
 # Each member has its own tests/test_fn.py -- importlib mode resolves them

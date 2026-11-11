@@ -1,0 +1,18 @@
+# Points at a locally-built image (see .github/workflows/pipeline.yml's
+# render-tests job, or build it yourself: `docker build
+# functions/lambdafunction --tag function-lambdafunction:dev`). Only used
+# for the equivalence/behaviour tests -- the real, deployed Function is
+# manifests/crossplane-compositions/custom-python/function-lambdafunction.yaml,
+# pointing at the actual pushed registry image.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-lambdafunction
+  annotations:
+    # See the other *-dev.yaml fixtures for why this annotation (rather than
+    # spec.packagePullPolicy) is what crossplane composition render actually
+    # honors.
+    render.crossplane.io/runtime-docker-pull-policy: Never
+spec:
+  package: function-lambdafunction:dev
+  packagePullPolicy: Never

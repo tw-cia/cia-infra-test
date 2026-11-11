@@ -1,0 +1,151 @@
+# A second composite kind that delegates to another composite (IAMRole,
+# see composition-iamrole-yaml-patching.yaml), the same nested-XR pattern
+# composition-staticwebsite-yaml-patching.yaml uses for
+# DnsValidatedCertificate. Two things are hardcoded secure defaults, set
+# directly in a `base` object with no patch (and no corresponding spec
+# field) overriding them: the delegated role's trustedService (always
+# lambda.amazonaws.com) and FunctionUrl's authorizationType (always
+# AWS_IAM, never NONE).
+#
+# Patch-and-Transform has no way to read another resource's observed status
+# directly -- only by round-tripping it through this composite's own status
+# first (ToCompositeFieldPath on "role" surfaces status.roleArn, which
+# "function" then gates on via a Required-policy FromCompositeFieldPath).
+# Every other method has to share this exact multi-pass shape to stay
+# equivalent -- see kcl-scripts/lambdafunction.k's header comment.
+#
+# Like composition-iamrole-yaml-patching.yaml's managedPolicyArns slots,
+# array fan-out here is a fixed number of hand-declared slots, not a real
+# loop: the baseline policy occupies index 0 (hardcoded in base), and
+# spec.managedPolicyArns[0]/[1] (this LambdaFunction's own extra policies)
+# get copied into indices 1/2 of the nested IAMRole's array. More than two
+# extra policies means adding another slot here by hand.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: lambdafunction-yaml-patching
+  labels:
+    method: yaml-patching
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: LambdaFunction
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: role
+            base:
+              apiVersion: platform.cia-infra-test.io/v1alpha1
+              kind: IAMRole
+              spec:
+                # Hardcoded: nothing in LambdaFunction's own spec can set
+                # this to anything but the one service this role is for.
+                trustedService: lambda.amazonaws.com
+                managedPolicyArns:
+                  - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.functionName
+                toFieldPath: spec.roleName
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-role"
+              # Extra managedPolicyArns slots -- see the file header comment.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.managedPolicyArns[0]
+                toFieldPath: spec.managedPolicyArns[1]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.managedPolicyArns[1]
+                toFieldPath: spec.managedPolicyArns[2]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.roleArn
+                toFieldPath: status.roleArn
+
+          # Gated on status.roleArn (Required) -- only exists once the
+          # nested IAMRole has reported its ARN back, on some prior pass.
+          - name: function
+            base:
+              apiVersion: lambda.aws.m.upbound.io/v1beta1
+              kind: Function
+              spec:
+                forProvider: {}
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.functionName
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.runtime
+                toFieldPath: spec.forProvider.runtime
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.handler
+                toFieldPath: spec.forProvider.handler
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.code.s3Bucket
+                toFieldPath: spec.forProvider.s3Bucket
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.code.s3Key
+                toFieldPath: spec.forProvider.s3Key
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.description
+                toFieldPath: spec.forProvider.description
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.memorySize
+                toFieldPath: spec.forProvider.memorySize
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.timeoutSeconds
+                toFieldPath: spec.forProvider.timeout
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.environmentVariables
+                toFieldPath: spec.forProvider.environment.variables
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.roleArn
+                toFieldPath: spec.forProvider.role
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.functionArn
+
+          # Gated on spec.functionUrlEnabled AND status.functionArn (both
+          # Required) -- only exists once the Function has been created and
+          # reported its ARN, and only if a URL was actually requested.
+          - name: function-url
+            base:
+              apiVersion: lambda.aws.m.upbound.io/v1beta1
+              kind: FunctionUrl
+              spec:
+                forProvider:
+                  # Hardcoded: nothing in LambdaFunction's own spec can set
+                  # this to "NONE" -- a public invoke URL isn't an option.
+                  authorizationType: AWS_IAM
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: pod-identity
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.functionUrlEnabled
+                toFieldPath: metadata.annotations[io.cia-infra-test/function-url-requested]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.functionName
+                toFieldPath: spec.forProvider.functionName
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.functionArn
+                toFieldPath: metadata.annotations[io.cia-infra-test/function-arn-known]
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.functionUrl
+                toFieldPath: status.functionUrl

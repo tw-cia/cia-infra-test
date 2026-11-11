@@ -4,15 +4,16 @@ per composite kind (yaml-patching, custom-python, inline-python,
 go-templating, kcl, externalized-kcl), and the one place a kind turns into
 a file path, a method name turns into a render() call, etc.
 
-Requires function-iamrole:dev, function-dnsvalidatedcertificate:dev, and
-function-staticwebsite:dev to already be built locally and loaded into the
-Docker daemon `crossplane composition render` talks to, and the `jsonnet`
-CLI to be on PATH -- see .github/workflows/pipeline.yml's render-tests job,
-or set this up yourself:
+Requires function-iamrole:dev, function-dnsvalidatedcertificate:dev,
+function-staticwebsite:dev, and function-lambdafunction:dev to already be
+built locally and loaded into the Docker daemon `crossplane composition
+render` talks to, and the `jsonnet` CLI to be on PATH -- see
+.github/workflows/pipeline.yml's render-tests job, or set this up yourself:
 
     docker build functions/iamrole --tag function-iamrole:dev
     docker build functions/dnsvalidatedcertificate --tag function-dnsvalidatedcertificate:dev
     docker build functions/staticwebsite --tag function-staticwebsite:dev
+    docker build functions/lambdafunction --tag function-lambdafunction:dev
     brew install jsonnet  # or your platform's equivalent
 
 This module has no test_* functions of its own, so pytest won't collect it
@@ -130,6 +131,7 @@ CUSTOM_PYTHON_FUNCTIONS = {
     "iamrole": "./tests/fixtures/functions-iamrole",
     "staticwebsite": "./tests/fixtures/functions-staticwebsite",
     "dnsvalidatedcertificate": "./tests/fixtures/functions-dnsvalidatedcertificate",
+    "lambdafunction": "./tests/fixtures/functions-lambdafunction",
 }
 
 

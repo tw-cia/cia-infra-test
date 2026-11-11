@@ -1,0 +1,10 @@
+# Built from functions/lambdafunction/ -- see that directory's README for
+# how to build and push this package. Replace spec.package with the real
+# registry path before applying.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-lambdafunction
+spec:
+  package: ghcr.io/tw-cia/cia-infra-test/function-lambdafunction:v0.1.30
+  packagePullPolicy: IfNotPresent

@@ -29,7 +29,7 @@ env:
   XP_CHANNEL: stable
   XP_VERSION: v2.5.0
 
-  # Shared across all three functions below. Each one's full registry path
+  # Shared across all four functions below. Each one's full registry path
   # is ghcr.io/tw-cia/cia-infra-test/function-<name>, matching spec.package
   # in manifests/crossplane-compositions/custom-python/function-<name>*.yaml.
   XPKG_VERSION: v0.1.${{ github.run_number }}
@@ -112,6 +112,7 @@ jobs:
           docker build functions/iamrole --tag function-iamrole:dev
           docker build functions/dnsvalidatedcertificate --tag function-dnsvalidatedcertificate:dev
           docker build functions/staticwebsite --tag function-staticwebsite:dev
+          docker build functions/lambdafunction --tag function-lambdafunction:dev
 
       - name: Run equivalence tests
         run: uv run pytest -vv tests/equivalence
@@ -233,6 +234,44 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  build-lambdafunction:
+    needs: [custom-python, render-tests, inline-python, externalized-kcl]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build runtime image
+        uses: docker/build-push-action@v7
+        with:
+          context: functions/lambdafunction
+          platforms: linux/amd64
+          target: image
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/runtime-amd64.tar
+
+      - name: Setup the Crossplane CLI
+        run: curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+
+      - name: Build Crossplane package
+        run: |
+          ./crossplane xpkg build \
+            --package-root=functions/lambdafunction/package \
+            --embed-runtime-image-tarball=/tmp/runtime-amd64.tar \
+            --package-file=/tmp/function-lambdafunction-amd64.xpkg
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-lambdafunction-amd64
+          path: /tmp/function-lambdafunction-amd64.xpkg
+          if-no-files-found: error
+          retention-days: 1
+
   # Pushes the packages built above to GHCR. Skipped on pull requests, since
   # those don't have push access and shouldn't publish packages anyway.
   push-iamrole:
@@ -312,3 +351,29 @@ jobs:
 
       - name: Push package
         run: ./crossplane --verbose xpkg push --package-files /tmp/xpkg/function-dnsvalidatedcertificate-amd64.xpkg "ghcr.io/tw-cia/cia-infra-test/function-dnsvalidatedcertificate:${{ env.XPKG_VERSION }}"
+
+  push-lambdafunction:
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: build-lambdafunction
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v8
+        with:
+          name: package-lambdafunction-amd64
+          path: /tmp/xpkg
+
+      - name: Setup the Crossplane CLI
+        run: curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push package
+        run: ./crossplane --verbose xpkg push --package-files /tmp/xpkg/function-lambdafunction-amd64.xpkg "ghcr.io/tw-cia/cia-infra-test/function-lambdafunction:${{ env.XPKG_VERSION }}"

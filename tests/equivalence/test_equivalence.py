@@ -58,3 +58,16 @@ def test_dns_validated_certificate_equivalence(xr, observed_resources):
 )
 def test_staticwebsite_equivalence(xr):
     assert_all_equivalent(render_all_methods(xr, "staticwebsite"))
+
+
+@pytest.mark.parametrize(
+    "xr",
+    [
+        "tests/fixtures/lambda-function-example.yaml",
+        "tests/fixtures/lambdafunction-xr-role-known.yaml",
+        "tests/fixtures/lambdafunction-xr-fully-observed.yaml",
+    ],
+    ids=["cold-start", "role-arn-known", "fully-observed"],
+)
+def test_lambdafunction_equivalence(xr):
+    assert_all_equivalent(render_all_methods(xr, "lambdafunction"))

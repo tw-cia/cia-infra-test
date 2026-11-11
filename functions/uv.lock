@@ -6,6 +6,7 @@ requires-python = ">=3.11, <3.14"
 members = [
     "function-dnsvalidatedcertificate",
     "function-iamrole",
+    "function-lambdafunction",
     "function-staticwebsite",
 ]
 
@@ -80,6 +81,30 @@ dev = [{ name = "pytest", specifier = ">=9.2.0" }]
 [[package]]
 name = "function-iamrole"
 source = { editable = "iamrole" }
+dependencies = [
+    { name = "click" },
+    { name = "crossplane-function-sdk-python" },
+    { name = "grpcio" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = "==8.5.0" },
+    { name = "crossplane-function-sdk-python", specifier = "==0.15.1" },
+    { name = "grpcio", specifier = ">=1.73.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.2.0" }]
+
+[[package]]
+name = "function-lambdafunction"
+source = { editable = "lambdafunction" }
 dependencies = [
     { name = "click" },
     { name = "crossplane-function-sdk-python" },
