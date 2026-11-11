@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 
-# It's important that this is Debian 12 to match the distroless image: the
+# It's important that this is Debian 13 to match the distroless image: the
 # venv's site-packages path is keyed on the Python minor version (e.g.
-# python3.11), and distroless/python3-debian12 ships Python 3.11.
-FROM debian:12-slim AS build
+# python3.13), and distroless/python3-debian13 ships Python 3.13.
+FROM debian:13-slim AS build
 
 RUN --mount=type=cache,target=/var/lib/apt/lists \
     --mount=type=cache,target=/var/cache/apt \
@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Copy the function venv to our runtime stage. It's important that the path be
 # the same as in the build stage, to avoid shebang paths and symlinks breaking.
-FROM gcr.io/distroless/python3-debian12 AS image
+FROM gcr.io/distroless/python3-debian13 AS image
 WORKDIR /
 COPY --from=build /venv/fn /venv/fn
 EXPOSE 9443

@@ -6,14 +6,14 @@ build-backend = "hatchling.build"
 name = "function-lambdafunction"
 description = "Crossplane composition function: composes a LambdaFunction (Function + delegated IAMRole + optional FunctionUrl)"
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.13,<3.14"
 license = "Apache-2.0"
 keywords = []
 authors = []
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.13",
 ]
 
 dependencies = [
