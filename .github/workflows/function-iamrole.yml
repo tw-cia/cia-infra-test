@@ -45,32 +45,13 @@ jobs:
         run: uv run pytest */tests -v
 
   # Runs in parallel with `unit-test`, not after it -- this exercises the
-  # Compositions directly via `crossplane composition render` (see
-  # tests/test_render.py), which is unrelated to the function-iamrole
-  # package `unit-test` builds/tests/pushes below.
-  render-test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v10.0.0
-
-      - name: Setup the Crossplane CLI
-        run: |
-          curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
-          sudo mv crossplane /usr/local/bin/crossplane
-
-      - name: Run composition render tests
-        run: uv run pytest -vv ./tests/test_render.py
-
-  # Also runs in parallel, independent of the others -- proves that all
-  # three implementations of each composite kind (Patch-and-Transform, a
-  # custom-packaged Python function, and an inline function-python script)
-  # produce equivalent output (see tests/test_equivalence.py). Unrelated to
-  # function-iamrole specifically, same as render-test above.
-  equivalence-test:
+  # Compositions directly via `crossplane composition render`: equivalence
+  # across all five implementations per composite kind (test_equivalence.py),
+  # plus the render-based correctness/security/consistency/input-reflection
+  # tests layered on top of that same harness. Everything under ./tests/ is
+  # unrelated to the function-iamrole package `unit-test` builds/tests/pushes
+  # below.
+  composition-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -96,11 +77,11 @@ jobs:
           docker build functions/dnsvalidatedcertificate --tag function-dnsvalidatedcertificate:dev
           docker build functions/staticwebsite --tag function-staticwebsite:dev
 
-      - name: Run equivalence tests
-        run: uv run pytest -vv ./tests/test_equivalence.py
+      - name: Run composition tests
+        run: uv run pytest -vv ./tests/
 
   build-iamrole:
-    needs: [unit-test, render-test, equivalence-test]
+    needs: [unit-test, composition-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -138,7 +119,7 @@ jobs:
           retention-days: 1
 
   build-staticwebsite:
-    needs: [unit-test, render-test, equivalence-test]
+    needs: [unit-test, composition-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -176,7 +157,7 @@ jobs:
           retention-days: 1
 
   build-dnsvalidatedcertificate:
-    needs: [unit-test, render-test, equivalence-test]
+    needs: [unit-test, composition-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
