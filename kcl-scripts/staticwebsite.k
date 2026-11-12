@@ -13,101 +13,82 @@
 # importstr-ing this file in, keeping option() out of anything `kcl test`
 # compiles.
 import json
+import schemas_compositions
+import schemas_providers
+
+# Every provider-backed resource here shares the same shape: a single
+# composition-resource-name annotation, forProvider, and the same
+# providerConfigRef. This factors that out; extraAnnotations covers the one
+# outlier (bucket's external-name annotation).
+awsResource = lambda apiVersion: str, kind: str, name: str, forProvider: schemas_providers.StaticWebsiteForProvider, extraAnnotations: {str:str} = {} -> {str:any} {
+    {
+        apiVersion = apiVersion
+        kind = kind
+        metadata.annotations = {"krm.kcl.dev/composition-resource-name" = name} | extraAnnotations
+        spec = {
+            forProvider = forProvider
+            providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
+        }
+    }
+}
 
 composeStaticWebsite = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
-    spec = oxr.spec
+    spec: schemas_compositions.StaticWebsiteSpec = oxr.spec
     statusIn = oxr.status or {}
 
     bucketName = spec.bucket.name
     bucketRegion = spec.bucket.region
     zone = spec?.zone
 
-    bucket = {
-        apiVersion = "s3.aws.m.upbound.io/v1beta1"
-        kind = "Bucket"
-        metadata.annotations = {
-            "krm.kcl.dev/composition-resource-name" = "bucket"
-            "crossplane.io/external-name" = bucketName
-        }
-        spec = {
-            forProvider = {region = bucketRegion}
-            providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
-        }
-    }
+    bucketForProvider: schemas_providers.BucketForProvider = {region = bucketRegion}
+    bucket = awsResource("s3.aws.m.upbound.io/v1beta1", "Bucket", "bucket", bucketForProvider, {"crossplane.io/external-name" = bucketName})
     bucketDomainName = ocds["bucket"]?.Resource?.status?.atProvider?.bucketRegionalDomainName
 
-    bucketPublicAccessBlock = {
-        apiVersion = "s3.aws.m.upbound.io/v1beta1"
-        kind = "BucketPublicAccessBlock"
-        metadata.annotations = {
-            "krm.kcl.dev/composition-resource-name" = "bucket-public-access-block"
-        }
-        spec = {
-            forProvider = {
-                blockPublicAcls = True
-                blockPublicPolicy = True
-                ignorePublicAcls = True
-                restrictPublicBuckets = True
-                bucket = bucketName
-                region = bucketRegion
-            }
-            providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
-        }
+    bucketPublicAccessBlockForProvider: schemas_providers.BucketPublicAccessBlockForProvider = {
+        blockPublicAcls = True
+        blockPublicPolicy = True
+        ignorePublicAcls = True
+        restrictPublicBuckets = True
+        bucket = bucketName
+        region = bucketRegion
     }
+    bucketPublicAccessBlock = awsResource("s3.aws.m.upbound.io/v1beta1", "BucketPublicAccessBlock", "bucket-public-access-block", bucketPublicAccessBlockForProvider)
 
-    originAccessControl = {
-        apiVersion = "cloudfront.aws.m.upbound.io/v1beta1"
-        kind = "OriginAccessControl"
-        metadata.annotations = {
-            "krm.kcl.dev/composition-resource-name" = "origin-access-control"
-        }
-        spec = {
-            forProvider = {
-                originAccessControlOriginType = "s3"
-                signingBehavior = "always"
-                signingProtocol = "sigv4"
-                name = "${bucketName}-oac"
-            }
-            providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
-        }
+    originAccessControlForProvider: schemas_providers.OriginAccessControlForProvider = {
+        originAccessControlOriginType = "s3"
+        signingBehavior = "always"
+        signingProtocol = "sigv4"
+        name = "${bucketName}-oac"
     }
+    originAccessControl = awsResource("cloudfront.aws.m.upbound.io/v1beta1", "OriginAccessControl", "origin-access-control", originAccessControlForProvider)
 
     distributionArn = statusIn?.distributionArn
-    bucketPolicy = [{
-        apiVersion = "s3.aws.m.upbound.io/v1beta1"
-        kind = "BucketPolicy"
-        metadata.annotations = {
-            "krm.kcl.dev/composition-resource-name" = "bucket-policy"
-        }
-        spec = {
-            forProvider = {
-                bucket = bucketName
-                region = bucketRegion
-                policy = json.encode({
-                    Version = "2012-10-17"
-                    Statement = [{
-                        Sid = "AllowCloudFrontServicePrincipal"
-                        Effect = "Allow"
-                        Principal = {Service = "cloudfront.amazonaws.com"}
-                        Action = "s3:GetObject"
-                        Resource = "arn:aws:s3:::${bucketName}/*"
-                        Condition = {StringEquals = {"AWS:SourceArn" = distributionArn}}
-                    }]
-                })
-            }
-            providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
-        }
-    }] if distributionArn else []
+    bucketPolicyForProvider: schemas_providers.BucketPolicyForProvider = {
+        bucket = bucketName
+        region = bucketRegion
+        policy = json.encode({
+            Version = "2012-10-17"
+            Statement = [{
+                Sid = "AllowCloudFrontServicePrincipal"
+                Effect = "Allow"
+                Principal = {Service = "cloudfront.amazonaws.com"}
+                Action = "s3:GetObject"
+                Resource = "arn:aws:s3:::${bucketName}/*"
+                Condition = {
+                    StringEquals = {"AWS:SourceArn" = distributionArn}
+                }
+            }]
+        })
+    }
+    bucketPolicy = [awsResource("s3.aws.m.upbound.io/v1beta1", "BucketPolicy", "bucket-policy", bucketPolicyForProvider)] if distributionArn else []
 
     hasZone = zone?.name and zone?.id
     observedCertificateArn = ocds["certificate"]?.Resource?.status?.certificateArn
     certificate = [{
         apiVersion = "platform.cia-infra-test.io/v1alpha1"
         kind = "DnsValidatedCertificate"
-        metadata.annotations = {
-            "krm.kcl.dev/composition-resource-name" = "certificate"
-        }
-        spec = {
+        metadata.annotations = {"krm.kcl.dev/composition-resource-name" = "certificate"}
+        spec = schemas_compositions.DnsValidatedCertificateSpec {
             domainName = zone.name
             zone = {id = zone.id}
         }
@@ -122,11 +103,19 @@ composeStaticWebsite = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
         acmCertificateArn = certificateArn
     } if zone?.name else {cloudfrontDefaultCertificate = True}) if hasDistribution else {}
 
-    distributionForProvider = {
+    distAtProvider = ocds["distribution"]?.Resource?.status?.atProvider
+
+    # distributionForProvider's required fields (origin[0].domainName in
+    # particular) are only guaranteed non-None once hasDistribution holds --
+    # built inside this branch, not hoisted above it, so a schema-typed
+    # construction with a still-unobserved bucketDomainNameIn never happens.
+    distribution = [awsResource("cloudfront.aws.m.upbound.io/v1beta1", "Distribution", "distribution", schemas_providers.DistributionForProvider {
         enabled = True
         isIpv6Enabled = True
         priceClass = "PriceClass_100"
-        restrictions = {geoRestriction = {restrictionType = "none"}}
+        restrictions = {
+            geoRestriction = {restrictionType = "none"}
+        }
         viewerCertificate = viewerCertificate
         origin = [{
             originId = "s3-origin"
@@ -144,51 +133,33 @@ composeStaticWebsite = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
         }
         **({"defaultRootObject": spec.indexDocument} if spec?.indexDocument else {})
         **({"aliases": [zone.name]} if zone?.name else {})
-    }
-    distAtProvider = ocds["distribution"]?.Resource?.status?.atProvider
-    distribution = [{
-        apiVersion = "cloudfront.aws.m.upbound.io/v1beta1"
-        kind = "Distribution"
-        metadata.annotations = {
-            "krm.kcl.dev/composition-resource-name" = "distribution"
-        }
-        spec = {
-            forProvider = distributionForProvider
-            providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
-        }
-    }] if hasDistribution else []
+    })] if hasDistribution else []
 
     cloudfrontDomainNameIn = statusIn?.cloudfrontDomainName
     hasDomainAliasRecord = hasZone and cloudfrontDomainNameIn
-    domainAliasRecord = [{
-        apiVersion = "route53.aws.m.upbound.io/v1beta1"
-        kind = "Record"
-        metadata.annotations = {
-            "krm.kcl.dev/composition-resource-name" = "domain-alias-record"
-        }
-        spec = {
-            forProvider = {
-                type = "A"
-                alias = {
-                    # Fixed, universal CloudFront alias-target hosted zone ID
-                    # -- not account- or distribution-specific.
-                    zoneId = "Z2FDTNDATAQYW2"
-                    evaluateTargetHealth = False
-                    name = cloudfrontDomainNameIn
-                }
-                name = zone.name
-                zoneId = zone.id
-            }
-            providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
-        }
-    }] if hasDomainAliasRecord else []
 
-    statusPatch = {
-        **({"bucketDomainName": bucketDomainName} if bucketDomainName else {})
-        **({"certificateArn": observedCertificateArn} if hasZone and observedCertificateArn else {})
-        **({"cloudfrontDomainName": distAtProvider.domainName} if hasDistribution and distAtProvider?.domainName else {})
-        **({"distributionArn": distAtProvider.arn} if hasDistribution and distAtProvider?.arn else {})
-    }
+    # Same reasoning as distribution above -- alias.name needs
+    # cloudfrontDomainNameIn to be non-None, which hasDomainAliasRecord
+    # guarantees only inside this branch.
+    domainAliasRecord = [awsResource("route53.aws.m.upbound.io/v1beta1", "Record", "domain-alias-record", schemas_providers.DomainAliasRecordForProvider {
+        type = "A"
+        alias = {
+            # Fixed, universal CloudFront alias-target hosted zone ID
+            # -- not account- or distribution-specific.
+            zoneId = "Z2FDTNDATAQYW2"
+            evaluateTargetHealth = False
+            name = cloudfrontDomainNameIn
+        }
+        name = zone.name
+        zoneId = zone.id
+    })] if hasDomainAliasRecord else []
+
+    statusPatch = {k: v for k, v in {
+        "bucketDomainName": bucketDomainName
+        "certificateArn": observedCertificateArn if hasZone else None
+        "cloudfrontDomainName": distAtProvider?.domainName if hasDistribution else None
+        "distributionArn": distAtProvider?.arn if hasDistribution else None
+    } if v != None}
     dxr = {**oxr, status = statusPatch}
 
     [bucket, bucketPublicAccessBlock, originAccessControl] + bucketPolicy + certificate + distribution + domainAliasRecord + [dxr]

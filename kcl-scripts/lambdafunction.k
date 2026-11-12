@@ -22,9 +22,11 @@
 #
 # This file must not call option(...) -- see staticwebsite.k's docstring for
 # why.
+import schemas_compositions
+import schemas_providers
 
 composeLambdaFunction = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
-    spec = oxr.spec
+    spec: schemas_compositions.LambdaFunctionSpec = oxr.spec
     statusIn = oxr.status or {}
 
     functionName = spec.functionName
@@ -35,7 +37,7 @@ composeLambdaFunction = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
         metadata.annotations = {
             "krm.kcl.dev/composition-resource-name" = "role"
         }
-        spec = {
+        spec = schemas_compositions.IAMRoleSpec {
             roleName = "${functionName}-role"
             # Hardcoded: nothing in LambdaFunction's own spec can set this to
             # anything but the one service this role is actually for.
@@ -49,18 +51,9 @@ composeLambdaFunction = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
     roleArn = statusIn?.roleArn
     code = spec.code
 
-    forProvider = {
-        role = roleArn
-        runtime = spec.runtime
-        handler = spec.handler
-        s3Bucket = code.s3Bucket
-        s3Key = code.s3Key
-        **({"description": spec.description} if spec?.description else {})
-        **({"memorySize": spec.memorySize} if spec?.memorySize else {})
-        **({"timeout": spec.timeoutSeconds} if spec?.timeoutSeconds else {})
-        **({"environment": {"variables": spec.environmentVariables}} if spec?.environmentVariables else {})
-    }
-
+    # FunctionForProvider.role is required -- built inside the `if roleArn`
+    # branch below, not hoisted above it, so this never runs with roleArn
+    # still None (same hazard staticwebsite.k's distributionForProvider hit).
     function = [{
         apiVersion = "lambda.aws.m.upbound.io/v1beta1"
         kind = "Function"
@@ -69,7 +62,19 @@ composeLambdaFunction = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
             "crossplane.io/external-name" = functionName
         }
         spec = {
-            forProvider = forProvider
+            forProvider = schemas_providers.FunctionForProvider {
+                role = roleArn
+                runtime = spec.runtime
+                handler = spec.handler
+                s3Bucket = code.s3Bucket
+                s3Key = code.s3Key
+                **({"description": spec.description} if spec?.description else {})
+                **({"memorySize": spec.memorySize} if spec?.memorySize else {})
+                **({"timeout": spec.timeoutSeconds} if spec?.timeoutSeconds else {})
+                **({
+                    "environment": {"variables": spec.environmentVariables}
+                } if spec?.environmentVariables else {})
+            }
             providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
         }
     }] if roleArn else []
@@ -82,7 +87,7 @@ composeLambdaFunction = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
             "krm.kcl.dev/composition-resource-name" = "function-url"
         }
         spec = {
-            forProvider = {
+            forProvider = schemas_providers.FunctionUrlForProvider {
                 functionName = functionName
                 # Hardcoded: nothing in LambdaFunction's own spec can set
                 # this to "NONE" -- a public invoke URL isn't an option.

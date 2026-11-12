@@ -7,9 +7,11 @@
 #
 # This file must not call option(...) -- see staticwebsite.k's docstring for
 # why.
+import schemas_compositions
+import schemas_providers
 
 composeCertificate = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
-    spec = oxr.spec
+    spec: schemas_compositions.DnsValidatedCertificateSpec = oxr.spec
     statusIn = oxr.status or {}
 
     domainName = spec.domainName
@@ -22,7 +24,7 @@ composeCertificate = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
             "krm.kcl.dev/composition-resource-name" = "certificate"
         }
         spec = {
-            forProvider = {
+            forProvider = schemas_providers.CertificateForProvider {
                 region = "us-east-1"
                 validationMethod = "DNS"
                 domainName = domainName
@@ -52,7 +54,7 @@ composeCertificate = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
             "krm.kcl.dev/composition-resource-name" = "cert-validation-record"
         }
         spec = {
-            forProvider = {
+            forProvider = schemas_providers.CertValidationRecordForProvider {
                 type = "CNAME"
                 ttl = 300
                 name = validationRecordName
@@ -71,7 +73,7 @@ composeCertificate = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
             "krm.kcl.dev/composition-resource-name" = "certificate-validation"
         }
         spec = {
-            forProvider = {
+            forProvider = schemas_providers.CertificateValidationForProvider {
                 region = "us-east-1"
                 certificateArn = certificateArn
                 validationRecordFqdns = [validationRecordName]

@@ -7,9 +7,11 @@
 # This file must not call option(...) -- see staticwebsite.k's docstring for
 # why.
 import json
+import schemas_compositions
+import schemas_providers
 
 composeIamRole = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
-    spec = oxr.spec
+    spec: schemas_compositions.IAMRoleSpec = oxr.spec
 
     assumeRolePolicy = {
         Version = "2012-10-17"
@@ -20,7 +22,7 @@ composeIamRole = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
         }]
     }
 
-    forProvider = {
+    forProvider: schemas_providers.RoleForProvider = {
         "assumeRolePolicy": json.encode(assumeRolePolicy)
         **({"description": spec.description} if spec?.description else {})
     }
@@ -45,7 +47,7 @@ composeIamRole = lambda oxr: {str:any}, ocds: {str:any} -> [{str:any}] {
             "krm.kcl.dev/composition-resource-name" = "policy-attachment-${i}"
         }
         spec = {
-            forProvider = {policyArn = arn, role = spec.roleName}
+            forProvider = schemas_providers.RolePolicyAttachmentForProvider {policyArn = arn, role = spec.roleName}
             providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
         }
     } for i, arn in (spec?.managedPolicyArns or [])]
