@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "function-iamrole"
 description = "Crossplane composition function: composes an IAMRole (role + policy attachments)"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.15,<3.16"
 license = "Apache-2.0"
 keywords = []
 authors = []

@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "function-staticwebsite"
 description = "Crossplane composition function: replicates composition-staticwebsite.yaml's Patch-and-Transform logic in Python"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.15,<3.16"
 license = "Apache-2.0"
 keywords = []
 authors = []

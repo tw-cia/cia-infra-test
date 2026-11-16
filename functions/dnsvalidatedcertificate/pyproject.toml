@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "function-dnsvalidatedcertificate"
 description = "Crossplane composition function: composes a DNS-validated ACM certificate (Certificate + Route53 validation record + CertificateValidation)"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.15,<3.16"
 license = "Apache-2.0"
 keywords = []
 authors = []
