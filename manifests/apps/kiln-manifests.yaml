@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kiln-manifests
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/tw-cia/kiln-manifests.git
+        revision: main
+        directories:
+          - path: "**"
+  template:
+    metadata:
+      name: 'kiln-{{.path.basename}}'
+      namespace: argocd
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/tw-cia/kiln-manifests.git
+        targetRevision: main
+        path: '{{.path.path}}'
+      destination:
+        name: in-cluster
+        namespace: 'kiln-{{.path.basename}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
