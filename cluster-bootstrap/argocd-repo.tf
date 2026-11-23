@@ -35,3 +35,26 @@ resource "kubernetes_secret_v1" "argocd_repo" {
 
   depends_on = [aws_eks_capability.argocd]
 }
+
+resource "kubernetes_secret_v1" "argocd_repo_kiln_manifests" {
+  count = var.enable_argocd && var.argocd_kiln_manifests_repo_url != null ? 1 : 0
+
+  metadata {
+    name      = "argocd-repo-kiln-manifests"
+    namespace = var.argocd_namespace
+
+    labels = {
+      "argocd.argoproj.io/secret-type" = "repository"
+    }
+  }
+
+  data = {
+    type                    = "git"
+    url                     = var.argocd_kiln_manifests_repo_url
+    githubAppID             = var.argocd_github_app_id
+    githubAppInstallationID = var.argocd_github_app_installation_id
+    githubAppPrivateKey     = file(var.argocd_github_app_private_key_path)
+  }
+
+  depends_on = [aws_eks_capability.argocd]
+}

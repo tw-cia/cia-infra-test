@@ -24,7 +24,7 @@ resource "aws_iam_role" "argocd_capability" {
 resource "aws_eks_access_entry" "argocd_capability_eks_access" {
   count = var.enable_argocd ? 1 : 0
 
-  cluster_name = module.eks.cluster_name
+  cluster_name  = module.eks.cluster_name
   principal_arn = aws_iam_role.argocd_capability[0].arn
   type          = "STANDARD"
 }
@@ -98,9 +98,9 @@ resource "kubernetes_config_map_v1" "argocd_cm" {
   }
 
   data = {
-    "ui.bannercontent" = "CIA Infra Test v1.0"
+    "ui.bannercontent"                   = "CIA Infra Test v1.0"
     "application.resourceTrackingMethod" = "annotation"
-    "resource.exclusions" = <<-EOT
+    "resource.exclusions"                = <<-EOT
       - apiGroups:
         - "*"
         kinds:

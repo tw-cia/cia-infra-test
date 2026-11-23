@@ -98,3 +98,57 @@ variable "argocd_github_app_private_key_path" {
   type        = string
   default     = null
 }
+
+variable "argocd_kiln_manifests_repo_url" {
+  description = "URL of the kiln-manifests Git repository Argo CD connects to via the GitHub App."
+  type        = string
+  default     = null
+}
+
+variable "github_org" {
+  description = "GitHub organisation that owns the trusted repository."
+  type        = string
+  default     = "tw-cia"
+}
+
+variable "github_org_id" {
+  description = "Numeric ID of the GitHub organisation (immutable OIDC subject)."
+  type        = string
+  default     = "353335891"
+}
+
+variable "github_repo" {
+  description = "Name of the GitHub repository (without org) whose main branch may assume the github-actions role."
+  type        = string
+  default     = "kiln-evaluations"
+}
+
+variable "github_repo_id" {
+  description = "Numeric ID of the GitHub repository (immutable OIDC subject)."
+  type        = string
+  default     = "1463972711"
+}
+
+variable "github_oidc_provider_arn" {
+  description = "ARN of an existing GitHub OIDC provider. Null creates one (only one may exist per account)."
+  type        = string
+  default     = null
+}
+
+variable "github_actions_policy_arns" {
+  description = "Managed policies attached to the github-actions role. Workflows on the trusted repo's main branch can use them."
+  type        = list(string)
+  default     = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
+}
+
+variable "readonly_trusted_principal_arns" {
+  description = "Principals allowed to assume the readonly role. Empty means any principal in this account that has sts:AssumeRole permission on it."
+  type        = list(string)
+  default     = []
+}
+
+variable "github_environment" {
+  description = "GitHub Actions environment (in the trusted repo) whose jobs may also assume the github-actions role."
+  type        = string
+  default     = "aws"
+}
