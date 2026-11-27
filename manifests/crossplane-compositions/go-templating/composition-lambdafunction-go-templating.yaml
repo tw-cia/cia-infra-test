@@ -1,0 +1,123 @@
+# A second composite kind that delegates to another composite (IAMRole),
+# the same nested-XR pattern composition-staticwebsite-go-templating.yaml
+# uses for DnsValidatedCertificate -- see that file for the $statusIn /
+# $observed / $statusOut shape this follows, and composition-iamrole-go-templating.yaml
+# for the missingkey/readiness notes that apply to every kind in this
+# directory.
+#
+# Unlike Patch-and-Transform's fixed managedPolicyArns slots, `concat`
+# handles any number of extra ARNs. Two things are hardcoded secure
+# defaults, with no corresponding spec field at all: the delegated role's
+# trustedService (always lambda.amazonaws.com) and FunctionUrl's
+# authorizationType (always AWS_IAM, never NONE).
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: lambdafunction-go-templating
+  labels:
+    method: go-templating
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: LambdaFunction
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $spec := .observed.composite.resource.spec }}
+            {{- $statusIn := .observed.composite.resource.status | default (dict) }}
+            {{- $observed := .observed.resources | default (dict) }}
+            {{- $statusOut := dict }}
+            {{- $functionName := $spec.functionName }}
+            {{- $extraPolicies := $spec.managedPolicyArns | default (list) }}
+            {{- $managedPolicyArns := concat (list "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole") $extraPolicies }}
+            apiVersion: platform.cia-infra-test.io/v1alpha1
+            kind: IAMRole
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: role
+            spec:
+              roleName: {{ printf "%s-role" $functionName | quote }}
+              # Hardcoded: nothing in LambdaFunction's own spec can set
+              # this to anything but the one service this role is for.
+              trustedService: lambda.amazonaws.com
+              managedPolicyArns: {{ $managedPolicyArns | toYaml | nindent 4 }}
+            {{- $observedRoleArn := dig "role" "resource" "status" "roleArn" "" $observed }}
+            {{- if $observedRoleArn }}
+            {{- $_ := set $statusOut "roleArn" $observedRoleArn }}
+            {{- end }}
+            {{- $roleArn := $statusIn.roleArn }}
+            {{- if $roleArn }}
+            ---
+            apiVersion: lambda.aws.m.upbound.io/v1beta1
+            kind: Function
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: function
+                crossplane.io/external-name: {{ $functionName | quote }}
+            spec:
+              forProvider:
+                role: {{ $roleArn | quote }}
+                runtime: {{ $spec.runtime | quote }}
+                handler: {{ $spec.handler | quote }}
+                s3Bucket: {{ $spec.code.s3Bucket | quote }}
+                s3Key: {{ $spec.code.s3Key | quote }}
+                {{- if $spec.description }}
+                description: {{ $spec.description | quote }}
+                {{- end }}
+                {{- if $spec.memorySize }}
+                memorySize: {{ $spec.memorySize }}
+                {{- end }}
+                {{- if $spec.timeoutSeconds }}
+                timeout: {{ $spec.timeoutSeconds }}
+                {{- end }}
+                {{- if $spec.environmentVariables }}
+                environment:
+                  variables: {{ $spec.environmentVariables | toYaml | nindent 8 }}
+                {{- end }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- $observedFunctionArn := dig "function" "resource" "status" "atProvider" "arn" "" $observed }}
+            {{- if $observedFunctionArn }}
+            {{- $_ := set $statusOut "functionArn" $observedFunctionArn }}
+            {{- end }}
+            {{- end }}
+            {{- $functionArn := $statusIn.functionArn }}
+            {{- if and $spec.functionUrlEnabled $functionArn }}
+            ---
+            apiVersion: lambda.aws.m.upbound.io/v1beta1
+            kind: FunctionUrl
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: function-url
+            spec:
+              forProvider:
+                functionName: {{ $functionName | quote }}
+                # Hardcoded: nothing in LambdaFunction's own spec can set
+                # this to "NONE" -- a public invoke URL isn't an option.
+                authorizationType: AWS_IAM
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- $observedFunctionUrl := dig "function-url" "resource" "status" "atProvider" "functionUrl" "" $observed }}
+            {{- if $observedFunctionUrl }}
+            {{- $_ := set $statusOut "functionUrl" $observedFunctionUrl }}
+            {{- end }}
+            {{- end }}
+            {{- if $statusOut }}
+            ---
+            apiVersion: platform.cia-infra-test.io/v1alpha1
+            kind: LambdaFunction
+            status: {{ $statusOut | toYaml | nindent 2 }}
+            {{- end }}
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

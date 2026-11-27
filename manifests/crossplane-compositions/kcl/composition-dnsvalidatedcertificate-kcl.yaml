@@ -1,0 +1,98 @@
+# A fifth implementation of DnsValidatedCertificate -- see
+# composition-iamrole-kcl.yaml for why KCL's `?.`/`or` reads closer to the
+# Python implementations than Go-templating's dig/with/default gymnastics.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: dnsvalidatedcertificate-kcl
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: DnsValidatedCertificate
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-kcl
+      input:
+        apiVersion: krm.kcl.dev/v1alpha1
+        kind: KCLInput
+        spec:
+          source: |
+            oxr = option("params").oxr
+            ocds = option("params").ocds
+            spec = oxr.spec
+            statusIn = oxr.status or {}
+
+            domainName = spec.domainName
+            zoneId = spec.zone.id
+
+            certificate = {
+                apiVersion = "acm.aws.m.upbound.io/v1beta1"
+                kind = "Certificate"
+                metadata.annotations = {
+                    "krm.kcl.dev/composition-resource-name" = "certificate"
+                }
+                spec = {
+                    forProvider = {
+                        region = "us-east-1"
+                        validationMethod = "DNS"
+                        domainName = domainName
+                    }
+                    providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
+                }
+            }
+
+            atProvider = ocds["certificate"]?.Resource?.status?.atProvider
+            validationOptions = atProvider?.domainValidationOptions or []
+            firstOption = validationOptions[0] if validationOptions else None
+
+            statusPatch = {
+                **({"certificateArn": atProvider.arn} if atProvider?.arn else {})
+                **({"certValidationRecordName": firstOption.resourceRecordName} if firstOption?.resourceRecordName else {})
+                **({"certValidationRecordValue": firstOption.resourceRecordValue} if firstOption?.resourceRecordValue else {})
+            }
+
+            dxr = {**oxr, status = statusPatch}
+
+            validationRecordName = statusIn?.certValidationRecordName
+            validationRecordValue = statusIn?.certValidationRecordValue
+            certValidationRecord = [{
+                apiVersion = "route53.aws.m.upbound.io/v1beta1"
+                kind = "Record"
+                metadata.annotations = {
+                    "krm.kcl.dev/composition-resource-name" = "cert-validation-record"
+                }
+                spec = {
+                    forProvider = {
+                        type = "CNAME"
+                        ttl = 300
+                        name = validationRecordName
+                        records = [validationRecordValue]
+                        zoneId = zoneId
+                    }
+                    providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
+                }
+            }] if validationRecordName and validationRecordValue else []
+
+            certificateArn = statusIn?.certificateArn
+            certificateValidation = [{
+                apiVersion = "acm.aws.m.upbound.io/v1beta1"
+                kind = "CertificateValidation"
+                metadata.annotations = {
+                    "krm.kcl.dev/composition-resource-name" = "certificate-validation"
+                }
+                spec = {
+                    forProvider = {
+                        region = "us-east-1"
+                        certificateArn = certificateArn
+                        validationRecordFqdns = [validationRecordName]
+                    }
+                    providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
+                }
+            }] if certificateArn and validationRecordName else []
+
+            items = [certificate] + certValidationRecord + certificateValidation + [dxr]
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

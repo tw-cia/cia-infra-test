@@ -1,0 +1,19 @@
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: LambdaFunction
+metadata:
+  name: laz-lambda-function-externalized-kcl
+  namespace: laz-testing-crossplane
+spec:
+  crossplane:
+    compositionSelector:
+      matchLabels:
+        method: externalized-kcl
+  functionName: laz-lambda-externalized-kcl-demo
+  runtime: python3.12
+  handler: index.handler
+  description: Demo Lambda function (externalized-kcl implementation)
+  code:
+    s3Bucket: laz-lambda-artifacts
+    s3Key: externalized-kcl/function.zip
+  memorySize: 128
+  timeoutSeconds: 10

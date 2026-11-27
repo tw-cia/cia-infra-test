@@ -1,0 +1,94 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: lambdafunctions.platform.cia-infra-test.io
+spec:
+  group: platform.cia-infra-test.io
+  names:
+    kind: LambdaFunction
+    plural: lambdafunctions
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                functionName:
+                  type: string
+                  description: Name of the Lambda function in AWS.
+                runtime:
+                  type: string
+                  description: Lambda runtime identifier, e.g. python3.12.
+                handler:
+                  type: string
+                  description: Function entry point, e.g. index.handler.
+                description:
+                  type: string
+                  description: Human-readable description of the function.
+                code:
+                  type: object
+                  description: Location of the deployment package in S3.
+                  properties:
+                    s3Bucket:
+                      type: string
+                    s3Key:
+                      type: string
+                  required:
+                    - s3Bucket
+                    - s3Key
+                memorySize:
+                  type: integer
+                  description: Memory allocated to the function, in MB.
+                timeoutSeconds:
+                  type: integer
+                  description: Maximum execution time, in seconds.
+                environmentVariables:
+                  type: object
+                  description: Environment variables exposed to the function.
+                  additionalProperties:
+                    type: string
+                managedPolicyArns:
+                  type: array
+                  description: >-
+                    Additional IAM managed policy ARNs to attach to the
+                    execution role, on top of the baseline logging policy
+                    every LambdaFunction gets regardless of this field.
+                  items:
+                    type: string
+                  default: []
+                functionUrlEnabled:
+                  type: boolean
+                  description: >-
+                    Whether to provision a Lambda function URL. Its
+                    authorization type is always AWS_IAM -- there is no way
+                    to request a publicly-invocable URL. Deliberately no
+                    default: Patch-and-Transform gates FunctionUrl on this
+                    field's presence, and a schema default would make the
+                    field always present (as false) once the API server
+                    applies it, defeating that gate on a real cluster.
+              required:
+                - functionName
+                - runtime
+                - handler
+                - code
+            status:
+              type: object
+              properties:
+                roleArn:
+                  type: string
+                  description: ARN of the execution role, once created.
+                functionArn:
+                  type: string
+                  description: ARN of the Lambda function, once created.
+                functionUrl:
+                  type: string
+                  description: >-
+                    Invoke URL, once created -- only set if
+                    spec.functionUrlEnabled is true. Always requires AWS_IAM
+                    auth to invoke.

@@ -1,0 +1,16 @@
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: StaticWebsite
+metadata:
+  name: laz-static-website-kcl
+  namespace: laz-testing-crossplane
+spec:
+  crossplane:
+    compositionSelector:
+      matchLabels:
+        method: kcl
+  bucket:
+    name: laz-static-website-kcl-demo
+    region: ap-southeast-1
+  zone:
+    name: static-kcl.trololo.demotw.com
+    id: Z00921083AT1Z6WZY8LYW

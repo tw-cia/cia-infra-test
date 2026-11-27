@@ -1,0 +1,10 @@
+# Built and pushed by .github/workflows/function-iamrole.yml's
+# build-staticwebsite/push-staticwebsite jobs. Bump the tag to match
+# whichever v0.1.<run-number> you want this Function pinned to.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-staticwebsite-python
+spec:
+  package: ghcr.io/tw-cia/cia-infra-test/function-staticwebsite:v0.1.30
+  packagePullPolicy: IfNotPresent

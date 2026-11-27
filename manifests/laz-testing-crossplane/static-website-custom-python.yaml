@@ -1,0 +1,16 @@
+apiVersion: platform.cia-infra-test.io/v1alpha1
+kind: StaticWebsite
+metadata:
+  name: laz-static-website-custom-python
+  namespace: laz-testing-crossplane
+spec:
+  crossplane:
+    compositionSelector:
+      matchLabels:
+        method: custom-python
+  bucket:
+    name: laz-static-website-custom-python-demo
+    region: ap-southeast-1
+  zone:
+    name: static-custom-python.trololo.demotw.com
+    id: Z00921083AT1Z6WZY8LYW

@@ -1,0 +1,72 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: staticwebsites.platform.cia-infra-test.io
+spec:
+  group: platform.cia-infra-test.io
+  names:
+    kind: StaticWebsite
+    plural: staticwebsites
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                bucket:
+                  type: object
+                  description: The S3 bucket to create and serve the site from.
+                  properties:
+                    name:
+                      type: string
+                      description: Globally-unique S3 bucket name.
+                    region:
+                      type: string
+                      description: AWS region for the bucket and the CloudFront origin.
+                  required:
+                    - name
+                    - region
+                indexDocument:
+                  type: string
+                  description: Index document served at the site root.
+                  default: index.html
+                zone:
+                  type: object
+                  description: >-
+                    Optional custom domain, served instead of the default
+                    CloudFront domain. Provisions an ACM certificate
+                    (DNS-validated) and a Route53 alias record automatically.
+                    The hosted zone itself is not managed by this composition.
+                  properties:
+                    name:
+                      type: string
+                      description: Custom domain name, e.g. site.example.com.
+                    id:
+                      type: string
+                      description: Route53 hosted zone ID to create records in.
+                  required:
+                    - name
+                    - id
+              required:
+                - bucket
+            status:
+              type: object
+              properties:
+                cloudfrontDomainName:
+                  type: string
+                  description: Public CloudFront domain name to actually visit the site on.
+                distributionArn:
+                  type: string
+                  description: ARN of the CloudFront distribution, once created.
+                bucketDomainName:
+                  type: string
+                  description: The bucket's regional domain name, used as the CloudFront origin.
+                certificateArn:
+                  type: string
+                  description: ARN of the ACM certificate for domainName, once requested.

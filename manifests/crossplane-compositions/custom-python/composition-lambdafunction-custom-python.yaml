@@ -1,0 +1,27 @@
+# Composes a Lambda Function, its execution role (delegated to the IAMRole
+# composite), and an optional FunctionUrl. The compose logic lives in the
+# function-lambdafunction package (see functions/lambdafunction/), not
+# inlined here, so it's unit-testable and reusable independently of this
+# Composition.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: lambdafunction-custom-python
+  labels:
+    method: custom-python
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: LambdaFunction
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-lambdafunction
+    # function-lambdafunction never sets a desired resource's Ready field,
+    # so without this step the XR would stay "Creating" forever regardless
+    # of how healthy the real Function/IAMRole/FunctionUrl are -- see
+    # function-auto-ready.yaml.
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

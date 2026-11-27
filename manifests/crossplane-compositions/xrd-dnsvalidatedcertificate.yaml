@@ -1,0 +1,48 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: dnsvalidatedcertificates.platform.cia-infra-test.io
+spec:
+  group: platform.cia-infra-test.io
+  names:
+    kind: DnsValidatedCertificate
+    plural: dnsvalidatedcertificates
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  description: Domain name to request a DNS-validated ACM certificate for.
+                zone:
+                  type: object
+                  description: Route53 hosted zone to create the DNS validation record in.
+                  properties:
+                    id:
+                      type: string
+                      description: Route53 hosted zone ID.
+                  required:
+                    - id
+              required:
+                - domainName
+                - zone
+            status:
+              type: object
+              properties:
+                certificateArn:
+                  type: string
+                  description: ARN of the ACM certificate for domainName, once requested.
+                certValidationRecordName:
+                  type: string
+                  description: DNS name of the ACM DNS-validation record.
+                certValidationRecordValue:
+                  type: string
+                  description: DNS value of the ACM DNS-validation record.

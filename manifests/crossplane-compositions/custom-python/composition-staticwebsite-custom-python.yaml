@@ -1,0 +1,24 @@
+# A Python-function equivalent of
+# ../yaml-patching/composition-staticwebsite-yaml-patching.yaml -- built to
+# prove the two approaches produce identical output (see
+# functions/staticwebsite/) before relying on either one further.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: staticwebsite-custom-python
+  labels:
+    method: custom-python
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: StaticWebsite
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-staticwebsite-python
+    # See function-auto-ready.yaml -- without this, this Composition's
+    # resources never get marked Ready regardless of their real AWS state.
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

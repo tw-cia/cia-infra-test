@@ -11,11 +11,15 @@ schema Zone:
     id: str
 
 schema StaticWebsiteSpec:
+    # Crossplane injects spec.crossplane into every XR; it's not ours to model.
+    crossplane?: any
     bucket: BucketRef
     zone?: Zone
     indexDocument?: str
 
 schema IAMRoleSpec:
+    # Crossplane injects spec.crossplane into every XR; it's not ours to model.
+    crossplane?: any
     roleName: str
     trustedService: str
     description?: str
@@ -26,6 +30,8 @@ schema LambdaCode:
     s3Key: str
 
 schema LambdaFunctionSpec:
+    # Crossplane injects spec.crossplane into every XR; it's not ours to model.
+    crossplane?: any
     functionName: str
     runtime: str
     handler: str
@@ -44,6 +50,8 @@ schema CertZoneRef:
 # instance of this same schema when it creates one as a resource, same as
 # this file's own oxr.spec.
 schema DnsValidatedCertificateSpec:
+    # Crossplane injects spec.crossplane into every XR; it's not ours to model.
+    crossplane?: any
     domainName: str
     zone: CertZoneRef
 

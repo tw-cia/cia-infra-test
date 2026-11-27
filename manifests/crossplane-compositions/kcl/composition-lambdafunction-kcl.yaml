@@ -1,0 +1,114 @@
+# A sixth implementation of LambdaFunction -- see composition-iamrole-kcl.yaml
+# for the `?.`/`or` rationale, and ../kcl-scripts/lambdafunction.k (the
+# externalized-kcl method's pure, `kcl test`-able version of this exact
+# logic) for the full design rationale: delegates to the IAMRole XR for its
+# execution role, and hardcodes two secure defaults with no corresponding
+# spec field at all (trustedService, FunctionUrl's authorizationType).
+# Function/FunctionUrl are gated on statusIn (this composite's OWN
+# persisted status from a prior pass), not a live same-pass read of ocds --
+# every method has to share that same multi-pass shape to stay equivalent.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: lambdafunction-kcl
+  labels:
+    method: kcl
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: LambdaFunction
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-kcl
+      input:
+        apiVersion: krm.kcl.dev/v1alpha1
+        kind: KCLInput
+        spec:
+          source: |
+            oxr = option("params").oxr
+            ocds = option("params").ocds
+            spec = oxr.spec
+            statusIn = oxr.status or {}
+
+            functionName = spec.functionName
+
+            role = {
+                apiVersion = "platform.cia-infra-test.io/v1alpha1"
+                kind = "IAMRole"
+                metadata.annotations = {
+                    "krm.kcl.dev/composition-resource-name" = "role"
+                }
+                spec = {
+                    roleName = "${functionName}-role"
+                    # Hardcoded: nothing in LambdaFunction's own spec can set
+                    # this to anything but the one service this role is for.
+                    trustedService = "lambda.amazonaws.com"
+                    managedPolicyArns = [
+                        "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                    ] + (spec?.managedPolicyArns or [])
+                }
+            }
+
+            roleArn = statusIn?.roleArn
+            code = spec.code
+
+            forProvider = {
+                role = roleArn
+                runtime = spec.runtime
+                handler = spec.handler
+                s3Bucket = code.s3Bucket
+                s3Key = code.s3Key
+                **({"description": spec.description} if spec?.description else {})
+                **({"memorySize": spec.memorySize} if spec?.memorySize else {})
+                **({"timeout": spec.timeoutSeconds} if spec?.timeoutSeconds else {})
+                **({"environment": {"variables": spec.environmentVariables}} if spec?.environmentVariables else {})
+            }
+
+            function = [{
+                apiVersion = "lambda.aws.m.upbound.io/v1beta1"
+                kind = "Function"
+                metadata.annotations = {
+                    "krm.kcl.dev/composition-resource-name" = "function"
+                    "crossplane.io/external-name" = functionName
+                }
+                spec = {
+                    forProvider = forProvider
+                    providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
+                }
+            }] if roleArn else []
+
+            functionArn = statusIn?.functionArn
+            functionUrl = [{
+                apiVersion = "lambda.aws.m.upbound.io/v1beta1"
+                kind = "FunctionUrl"
+                metadata.annotations = {
+                    "krm.kcl.dev/composition-resource-name" = "function-url"
+                }
+                spec = {
+                    forProvider = {
+                        functionName = functionName
+                        # Hardcoded: nothing in LambdaFunction's own spec
+                        # can set this to "NONE" -- a public invoke URL
+                        # isn't an option.
+                        authorizationType = "AWS_IAM"
+                    }
+                    providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
+                }
+            }] if (spec?.functionUrlEnabled and functionArn) else []
+
+            observedRoleArn = ocds["role"]?.Resource?.status?.roleArn
+            observedFunctionArn = ocds["function"]?.Resource?.status?.atProvider?.arn
+            observedFunctionUrl = ocds["function-url"]?.Resource?.status?.atProvider?.functionUrl
+            statusPatch = {
+                **({"roleArn": observedRoleArn} if observedRoleArn else {})
+                **({"functionArn": observedFunctionArn} if observedFunctionArn else {})
+                **({"functionUrl": observedFunctionUrl} if observedFunctionUrl else {})
+            }
+            dxr = {**oxr, status = statusPatch}
+
+            items = [role] + function + functionUrl + [dxr]
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

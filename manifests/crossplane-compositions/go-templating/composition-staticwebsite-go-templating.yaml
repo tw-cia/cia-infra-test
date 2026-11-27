@@ -1,0 +1,201 @@
+# A fourth implementation of StaticWebsite -- see
+# composition-iamrole-go-templating.yaml for the missingkey/readiness notes
+# that apply to all three kinds in this directory, and
+# ../yaml-patching/composition-staticwebsite-yaml-patching.yaml for the
+# OAC/bucket-policy/distribution design this faithfully ports, bug and all
+# (viewerCertificate.acmCertificateArn is gated on status.distributionArn
+# alone, not on whether a custom zone is even set, so a StaticWebsite with no
+# custom zone can never actually get a Distribution).
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: staticwebsite-go-templating
+  labels:
+    method: go-templating
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: StaticWebsite
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $spec := .observed.composite.resource.spec }}
+            {{- $statusIn := .observed.composite.resource.status | default (dict) }}
+            {{- $observed := .observed.resources | default (dict) }}
+            {{- $bucketName := $spec.bucket.name }}
+            {{- $bucketRegion := $spec.bucket.region }}
+            {{- $zone := $spec.zone }}
+            {{- $statusOut := dict }}
+            apiVersion: s3.aws.m.upbound.io/v1beta1
+            kind: Bucket
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: bucket
+                crossplane.io/external-name: {{ $bucketName | quote }}
+            spec:
+              forProvider:
+                region: {{ $bucketRegion | quote }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- $bucketDomainName := dig "bucket" "resource" "status" "atProvider" "bucketRegionalDomainName" "" $observed }}
+            {{- if $bucketDomainName }}
+            {{- $_ := set $statusOut "bucketDomainName" $bucketDomainName }}
+            {{- end }}
+            ---
+            apiVersion: s3.aws.m.upbound.io/v1beta1
+            kind: BucketPublicAccessBlock
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: bucket-public-access-block
+            spec:
+              forProvider:
+                blockPublicAcls: true
+                blockPublicPolicy: true
+                ignorePublicAcls: true
+                restrictPublicBuckets: true
+                bucket: {{ $bucketName | quote }}
+                region: {{ $bucketRegion | quote }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            ---
+            apiVersion: cloudfront.aws.m.upbound.io/v1beta1
+            kind: OriginAccessControl
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: origin-access-control
+            spec:
+              forProvider:
+                originAccessControlOriginType: s3
+                signingBehavior: always
+                signingProtocol: sigv4
+                name: {{ printf "%s-oac" $bucketName | quote }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- $distributionArn := $statusIn.distributionArn }}
+            {{- if $distributionArn }}
+            ---
+            apiVersion: s3.aws.m.upbound.io/v1beta1
+            kind: BucketPolicy
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: bucket-policy
+            spec:
+              forProvider:
+                bucket: {{ $bucketName | quote }}
+                region: {{ $bucketRegion | quote }}
+                policy: {{ dict "Version" "2012-10-17" "Statement" (list (dict "Sid" "AllowCloudFrontServicePrincipal" "Effect" "Allow" "Principal" (dict "Service" "cloudfront.amazonaws.com") "Action" "s3:GetObject" "Resource" (printf "arn:aws:s3:::%s/*" $bucketName) "Condition" (dict "StringEquals" (dict "AWS:SourceArn" $distributionArn)))) | toJson | quote }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- end }}
+            {{- if and $zone $zone.name $zone.id }}
+            ---
+            apiVersion: platform.cia-infra-test.io/v1alpha1
+            kind: DnsValidatedCertificate
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: certificate
+            spec:
+              domainName: {{ $zone.name | quote }}
+              zone:
+                id: {{ $zone.id | quote }}
+            {{- $observedCertificateArn := dig "certificate" "resource" "status" "certificateArn" "" $observed }}
+            {{- if $observedCertificateArn }}
+            {{- $_ := set $statusOut "certificateArn" $observedCertificateArn }}
+            {{- end }}
+            {{- end }}
+            {{- $certificateArn := $statusIn.certificateArn }}
+            {{- $bucketDomainNameIn := $statusIn.bucketDomainName }}
+            {{- if and $bucketDomainNameIn $certificateArn }}
+            {{- $viewerCertificate := dict "cloudfrontDefaultCertificate" true }}
+            {{- if and $zone $zone.name }}
+            {{- $viewerCertificate = dict "sslSupportMethod" "sni-only" "minimumProtocolVersion" "TLSv1.2_2021" "acmCertificateArn" $certificateArn }}
+            {{- end }}
+            ---
+            apiVersion: cloudfront.aws.m.upbound.io/v1beta1
+            kind: Distribution
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: distribution
+            spec:
+              forProvider:
+                enabled: true
+                isIpv6Enabled: true
+                priceClass: PriceClass_100
+                restrictions:
+                  geoRestriction:
+                    restrictionType: none
+                viewerCertificate: {{ $viewerCertificate | toYaml | nindent 6 }}
+                origin:
+                  - originId: s3-origin
+                    originAccessControlIdSelector:
+                      matchControllerRef: true
+                    domainName: {{ $bucketDomainNameIn | quote }}
+                defaultCacheBehavior:
+                  targetOriginId: s3-origin
+                  viewerProtocolPolicy: redirect-to-https
+                  allowedMethods: [GET, HEAD]
+                  cachedMethods: [GET, HEAD]
+                  # AWS managed "CachingOptimized" policy -- a fixed, global ID
+                  # documented by AWS, not account-specific.
+                  cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+                {{- if $spec.indexDocument }}
+                defaultRootObject: {{ $spec.indexDocument | quote }}
+                {{- end }}
+                {{- if and $zone $zone.name }}
+                aliases: [{{ $zone.name | quote }}]
+                {{- end }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- $distAtProvider := dig "distribution" "resource" "status" "atProvider" (dict) $observed }}
+            {{- if $distAtProvider.domainName }}
+            {{- $_ := set $statusOut "cloudfrontDomainName" $distAtProvider.domainName }}
+            {{- end }}
+            {{- if $distAtProvider.arn }}
+            {{- $_ := set $statusOut "distributionArn" $distAtProvider.arn }}
+            {{- end }}
+            {{- end }}
+            {{- $cloudfrontDomainNameIn := $statusIn.cloudfrontDomainName }}
+            {{- if and $zone $zone.name $zone.id $cloudfrontDomainNameIn }}
+            ---
+            apiVersion: route53.aws.m.upbound.io/v1beta1
+            kind: Record
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: domain-alias-record
+            spec:
+              forProvider:
+                type: A
+                alias:
+                  # Fixed, universal CloudFront alias-target hosted zone ID
+                  # -- not account- or distribution-specific.
+                  zoneId: Z2FDTNDATAQYW2
+                  evaluateTargetHealth: false
+                  name: {{ $cloudfrontDomainNameIn | quote }}
+                name: {{ $zone.name | quote }}
+                zoneId: {{ $zone.id | quote }}
+              providerConfigRef:
+                kind: ClusterProviderConfig
+                name: pod-identity
+            {{- end }}
+            {{- if $statusOut }}
+            ---
+            apiVersion: platform.cia-infra-test.io/v1alpha1
+            kind: StaticWebsite
+            status: {{ $statusOut | toYaml | nindent 2 }}
+            {{- end }}
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

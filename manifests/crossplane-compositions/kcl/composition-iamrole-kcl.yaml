@@ -1,0 +1,83 @@
+# A fifth implementation of IAMRole, alongside Patch-and-Transform
+# (../yaml-patching/composition-iamrole-yaml-patching.yaml), the
+# custom-packaged Python function (../custom-python/composition-iamrole-custom-python.yaml),
+# the inline Python script (../inline-python/composition-iamrole-inline-python.jsonnet),
+# and Go-templating (../go-templating/composition-iamrole-go-templating.yaml).
+#
+# KCL's `?.` safe-navigation operator and `or` fallback read like Python's
+# dict.get() -- no missingkey-option tradeoff or nested with/dig gymnastics
+# like Go-templating needed for optional fields (spec.description,
+# spec.managedPolicyArns). A real list comprehension handles any number of
+# managedPolicyArns, same as the Python implementations.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: iamrole-kcl
+spec:
+  compositeTypeRef:
+    apiVersion: platform.cia-infra-test.io/v1alpha1
+    kind: IAMRole
+  mode: Pipeline
+  pipeline:
+    - step: compose
+      functionRef:
+        name: function-kcl
+      input:
+        apiVersion: krm.kcl.dev/v1alpha1
+        kind: KCLInput
+        spec:
+          source: |
+            import json
+
+            oxr = option("params").oxr
+            ocds = option("params").ocds
+            spec = oxr.spec
+
+            assumeRolePolicy = {
+                Version = "2012-10-17"
+                Statement = [{
+                    Effect = "Allow"
+                    Principal = {Service = spec.trustedService}
+                    Action = "sts:AssumeRole"
+                }]
+            }
+
+            forProvider = {
+                "assumeRolePolicy": json.encode(assumeRolePolicy)
+                **({"description": spec.description} if spec?.description else {})
+            }
+
+            role = {
+                apiVersion = "iam.aws.m.upbound.io/v1beta1"
+                kind = "Role"
+                metadata.annotations = {
+                    "krm.kcl.dev/composition-resource-name" = "role"
+                    "crossplane.io/external-name" = spec.roleName
+                }
+                spec = {
+                    forProvider = forProvider
+                    providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
+                }
+            }
+
+            policyAttachments = [{
+                apiVersion = "iam.aws.m.upbound.io/v1beta1"
+                kind = "RolePolicyAttachment"
+                metadata.annotations = {
+                    "krm.kcl.dev/composition-resource-name" = "policy-attachment-${i}"
+                }
+                spec = {
+                    forProvider = {policyArn = arn, role = spec.roleName}
+                    providerConfigRef = {kind = "ClusterProviderConfig", name = "pod-identity"}
+                }
+            } for i, arn in (spec?.managedPolicyArns or [])]
+
+            roleArn = ocds["role"]?.Resource?.status?.atProvider?.arn
+            statusPatch = {"roleArn": roleArn} if roleArn else {}
+
+            dxr = {**oxr, status = statusPatch}
+
+            items = [role] + policyAttachments + [dxr]
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready
